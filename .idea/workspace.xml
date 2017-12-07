@@ -2,24 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ab8234a9-3072-4781-9a05-432b476e238a" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/utilities.py" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/Analysing BLAST results - BioPython version-checkpoint.ipynb" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Analysing BLAST results - BioPython version.ipynb" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Acanthaster planci.pdf" afterPath="$PROJECT_DIR$/Acanthaster planci.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Aplysia californica.pdf" afterPath="$PROJECT_DIR$/Aplysia californica.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Branchiostoma belcheri.pdf" afterPath="$PROJECT_DIR$/Branchiostoma belcheri.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Ciona intestinalis.pdf" afterPath="$PROJECT_DIR$/Ciona intestinalis.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Saccoglossus kowalevskii.pdf" afterPath="$PROJECT_DIR$/Saccoglossus kowalevskii.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Strongylocentrotus purpuratus.pdf" afterPath="$PROJECT_DIR$/Strongylocentrotus purpuratus.pdf" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/Analysing BLAST results-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Analysing BLAST results-checkpoint.ipynb" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Analysing BLAST results.ipynb" afterPath="$PROJECT_DIR$/Analysing BLAST results.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/2U1 missing taxonomy information-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/2U1 missing taxonomy information-checkpoint.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/Colouring phylogenetic trees-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Colouring phylogenetic trees-checkpoint.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/Map PHYLIP format back to full header information-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Map PHYLIP format back to full header information-checkpoint.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/2U1 missing taxonomy information.ipynb" afterPath="$PROJECT_DIR$/2U1 missing taxonomy information.ipynb" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Colouring phylogenetic trees.ipynb" afterPath="$PROJECT_DIR$/Colouring phylogenetic trees.ipynb" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Comparing PSI-BLAST output.ipynb" afterPath="$PROJECT_DIR$/Comparing PSI-BLAST output.ipynb" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/alignment.py" afterPath="$PROJECT_DIR$/src/alignment.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/checkGenome.py" afterPath="$PROJECT_DIR$/src/checkGenome.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/fasta.py" afterPath="$PROJECT_DIR$/src/fasta.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/phylogenetics.py" afterPath="$PROJECT_DIR$/src/phylogenetics.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
