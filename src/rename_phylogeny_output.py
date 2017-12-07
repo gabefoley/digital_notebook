@@ -1,3 +1,0 @@
-import fasta
-
-open()

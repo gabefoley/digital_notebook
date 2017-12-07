@@ -1,10 +1,11 @@
 from Bio import SeqIO, Entrez
 from collections import defaultdict
-from lxml import etree as ET
 import plotly
 plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
 import plotly.plotly as py
+import plotly.graph_objs as go
 from plotly.graph_objs import *
+import re
 
 
 out_records =[]
@@ -21,15 +22,59 @@ out_records =[]
 #             species_count[name].append(record.id)
 #     return species_count
 
-def build_species_count(*exclude_on, records, length=0 ):
+
+
+def subset_records(*header_terms, records, length=0, mode="exclude"):
+    """
+
+    :param header_terms:
+    :param mode:
+    :return:
+    """
+    new_records = {}
+    for record in records.values():
+        if (mode=="exclude"):
+            if (len(str(record.seq)) > length and not any(term in record.description for term in header_terms)):
+                new_records[record.name] = record
+        elif (mode=="include"):
+            # print (record.description)
+            # print (header_terms)
+            # print (any(term in record.description for term in header_terms))
+            # print (len(str(record.seq)))
+            if (len(str(record.seq)) > length and any(term in record.description for term in header_terms)):
+                new_records[record.name] = record
+
+    return new_records
+
+def subset_records_with_regex(*header_terms, records, length=0, mode="exclude"):
+    searchTerm = ""
+    for term in header_terms:
+        searchTerm += "\s" + term + "\d*-like|" + term + "\d*|"
+
+    regex = re.compile(searchTerm[0:len(searchTerm) - 1])
+
+    new_records = {}
+    for record in records.values():
+        if (mode=="exclude"):
+            if (len(str(record.seq)) > length and not regex.search(record.description)):
+                new_records[record.name] = record
+        elif (mode=="include"):
+            if (len(str(record.seq)) > length and regex.search(record.description)):
+                new_records[record.name] = record
+
+    return new_records
+
+
+
+def build_species_count(*header_terms, records, length=0, mode="exclude"):
     species_count = defaultdict(list)
     for record in records.values():
-        if (len(str(record.seq)) > length and not any(exclude in record.description for exclude in exclude_on)):
-            if "[" in record.description:
-                name = record.description.split("[")[1].split("]")[0]
+        if (mode=="exclude"):
+            if (len(str(record.seq)) > length and not any(term in record.description for term in header_terms)):
+                if "[" in record.description:
+                    name = record.description.split("[")[1].split("]")[0]
             else:
                 print (record.description)
-            # print (record.annotations["organism"])
             species_count[name].append(record.id)
     return species_count
 
@@ -44,11 +89,13 @@ def count_ids(records, min=0):
     return count
 
 def get_species_names(records, min=0, counts=False):
+    species_names = []
     for k,v in records.items():
         if len(v) > min:
-            print (k) if not counts else print (k, len(v))
+            species_names.append(k) if not counts else species_names.append(k + " " + str(len(v)))
+    return species_names
 
-def plot_record_number(records, min=0):
+def plot_record_number(records, plotType, min=0):
     plot_records = {}
     # If we need to restrict the records to plot based on a minimum number
     if min > 0:
@@ -59,10 +106,23 @@ def plot_record_number(records, min=0):
     else:
         plot_records = records
 
-    data = [Bar(x=list(plot_records.keys()),
+    if (plotType == "Bar"):
+
+        data = [Bar(x=list(plot_records.keys()),
                     y= [len (x) for x in plot_records.values()])]
 
+    elif (plotType == "Pie"):
+        trace = go.Pie(labels=plot_records.keys(), values=plot_records.values())
+
+        py.iplot([trace], filename='basic_pie_chart')
+
+
+
+    else:
+        print ("Invalid plot type selected. Choose 'Bar' or 'Pie'")
+
     return data
+
 
 
 def map_ids_to_records(records, full_dict, unique=False):
@@ -73,6 +133,16 @@ def map_ids_to_records(records, full_dict, unique=False):
         else:
             for id in idlist:
                 out_records.append(full_dict[id])
+    return out_records
+
+
+def map_species_to_records(records, full_dict, unique=False):
+    out_records = []
+    for id in records:
+        if unique:
+            out_records.append(full_dict[id])
+        else:
+            out_records.append(full_dict[id])
     return out_records
 
 
@@ -89,3 +159,20 @@ def replaceWords(changes, file):
     for k,v in changes:
         file.replace(k,v)
     return file
+
+
+# full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))
+# full_record = SeqIO.to_dict(SeqIO.parse("files/test/alligatortest.fasta", "fasta"))
+#
+# only_2U1_records = subset_records("2U1", "2U1-like", records=full_record, length=400, mode="include")
+#
+# print (only_2U1_records)
+
+# test_records = subset_records_with_regex("2D", "2B", records=full_record, mode="include")
+# for item in full_record:
+#     print(full_record[item].description)
+#
+# print("---------------------------------")
+#
+# for item in test_records:
+#     print(test_records[item].description)
