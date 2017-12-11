@@ -30,7 +30,7 @@ def loadHeaderTerms(filepath):
 
     header_terms = []
     with open(filepath, "r") as text_file:
-        for item in text_file.split():
+        for item in text_file.read().split():
             header_terms.append(item)
     return header_terms
 

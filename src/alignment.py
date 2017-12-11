@@ -1,10 +1,10 @@
 from Bio import AlignIO, SeqIO
-from Bio.Align.Applications import MafftCommandline
+from Bio.Align.Applications import MafftCommandline, ClustalOmegaCommandline
 from Bio import AlignIO
 import io
 import re
 
-filepath = "files/2U1_all_candidates_PSI_BLAST.fasta"
+filepath = "files/priapulus_caudatus.fasta"
 
 
 def alignWithMAFFT(filepath):
@@ -12,6 +12,14 @@ def alignWithMAFFT(filepath):
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
 
+    return align
+
+
+def align_with_clustal_omega(filepath):
+    clustal_omega_cline = ClustalOmegaCommandline(infile=filepath)
+
+    stdout, stderr = clustal_omega_cline()
+    align = AlignIO.read(io.StringIO(stdout), "fasta")
     return align
 
 def writeAlignment(file, filepath, format):
@@ -34,5 +42,12 @@ def checkLongIndels(record, indelLength):
 #     print (line)
 #     print (checkLongIndels(line.seq, 5))
 
-# def getPercentIdentity(seq1, seq2):
-#
+def getPercentIdentity(seq1, seq2):
+    matches = sum(aa1 == aa2 for aa1, aa2 in zip(seq1, seq2))
+    pct_identity = 100.0 * matches / len(seq1)
+    return pct_identity
+
+# clustal_align = align_with_clustal_omega(filepath)
+
+# for line in clustal_align:
+#     print (line)
