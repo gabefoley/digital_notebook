@@ -15,8 +15,9 @@ This is a repository that contains the files so they can be used in local deploy
 ## Installation for local deployment
 
 1. Clone this directory
-2. [jupyter notebook](https://jupyter.readthedocs.io/en/latest/install.html "Install Jupyter Notebook")
-3. Start Jupyter Notebook from the command line in this directory using `jupyter notebook` command
+2. [Install Jupyter Notebook](https://jupyter.readthedocs.io/en/latest/install.html "Install Jupyter Notebook")
+3. Install the modules needed to your Python installation 'pip3 install -r requirements.txt'
+4. Start Jupyter Notebook from the command line in this directory using `jupyter notebook` command
  
 
 ## Usage
