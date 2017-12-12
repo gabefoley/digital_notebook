@@ -1,5 +1,8 @@
 /files/*
 /results/*
+!files/.gitkeep 
+!results/.gitkeep 
+
 .DS_Store
 
 
