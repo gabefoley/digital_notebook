@@ -20,18 +20,19 @@ def check_genomic_location(records, min=0, visualise=None, file_path=None):
             for record in ids:
                 records += record + " OR "
 
-            # print (species)
+            print (species)
+            print( records)
             # records = records[0:-4]
 
-                search = Entrez.esearch(term=record, db="gene", retmode="fasta", rettype="acc")
-                result = Entrez.read(search)
-                # print ('progress')
-                # print (result)
-                if len(result['IdList']) > 0:
-                    gene_ids = result['IdList'][0]
-                    # print ('here are gene ids')
-                    # print (gene_ids)
-                    recordDict[record] = gene_ids
+            search = Entrez.esearch(term=record, db="gene", retmode="fasta", rettype="acc")
+            result = Entrez.read(search)
+            # print ('progress')
+            # print (result)
+            if len(result['IdList']) > 0:
+                gene_ids = result['IdList'][0]
+                # print ('here are gene ids')
+                # print (gene_ids)
+                recordDict[record] = gene_ids
 
             print (recordDict)
             # print (len(gene_ids))
@@ -72,10 +73,15 @@ def check_genomic_location(records, min=0, visualise=None, file_path=None):
                                 text_file.write("Gene wregion starts at %s \n" % (start[0]))
                                 text_file.write("Gene region ends at %s \n" % (finish[0]))
                                 text_file.write("Gene region is %s nucleotides long \n" % (int(finish[0]) - int(start[0])))
-                                if (chromosome[0] == "Un"):
-                                    text_file.write("Chromosome is unassigned \n")
-                                else:
-                                    text_file.write("On chromosome %s \n" % (chromosome[0]))
+                                print ('Chromosome is ')
+                                print (chromosome)
+                                if (chromosome):
+                                    print ("Has value")
+                                if (chromosome):
+                                    if (chromosome[0] == "Un"):
+                                        text_file.write("Chromosome is unassigned \n")
+                                    else:
+                                        text_file.write("On chromosome %s \n" % (chromosome[0]))
 
                                 text_file.write("-------------------------------------------------------------------\n")
 
