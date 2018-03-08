@@ -7,7 +7,7 @@ all_seqs = SeqIO.to_dict(SeqIO.parse("files/exons/all.fasta", "fasta"))
 agaricus_bisporus = SeqIO.to_dict(SeqIO.parse("files/exons/Agaricus_bisporus_stripped_removed.fasta", "fasta"))
 filtered_2U1 = SeqIO.to_dict(SeqIO.parse("files/exons/2U1_filtered_records.fasta", "fasta"))
 filtered_pruned_2U1 = SeqIO.to_dict(SeqIO.parse("files/exons/2U1_BLAST_filtered_records_X_removed_C_2.fasta", "fasta"))
-
+import re
 
 class GenomicRecord(object):
 
@@ -18,7 +18,7 @@ class GenomicRecord(object):
     exon_lengths = []
     intron_lengths = []
 
-    def __init__(self, protein_id, gene_id = "", refseq="", genome_id = "",  genome_positions = [], exons = [], introns = [], calc_introns=False):
+    def __init__(self, protein_id, gene_id = "", refseq="", genome_id = "",  genome_positions = [], exons = [], strand="", introns = [], calc_introns=False):
             self.protein_id = protein_id
             self.gene_id = gene_id
             self.refseq = refseq
@@ -27,12 +27,15 @@ class GenomicRecord(object):
             self.nucleotides = ""
             self.amino_acids = ""
             self.exons = exons
+            self.strand = strand
             self.introns = introns
             self.exon_count = len(exons)
             self.exon_lengths = []
             self.intron_lengths = []
 
+
             self.update_feature_lengths(calc_introns)
+
 
 
 
@@ -47,8 +50,9 @@ class GenomicRecord(object):
         # print (self.exons)
         for count, exon in enumerate(self.exons):
 
-            exon_start = int(exon.split("..")[0].replace(")", "").replace("<", "").replace(">", ""))
-            exon_end = int(exon.split("..")[1].replace(")", "").replace("<", "").replace(">", ""))
+
+            exon_start = int(re.sub( r'[)<>]', r'', exon.split("..")[0]))
+            exon_end = int(re.sub( r'[)<>]', r'', exon.split("..")[1]))
 
             if calc_introns:
                 if count != 0 and count != len(self.exons):
@@ -58,4 +62,13 @@ class GenomicRecord(object):
                 prev_exon = exon_end
 
             self.exon_lengths.append(exon_end - exon_start)
+
+
+        if (self.strand == "minus"):
+            self.exon_lengths.reverse()
+            self.exons.reverse()
+
+            if calc_introns:
+                self.intron_lengths.reverse()
+                self.introns.reverse()
 

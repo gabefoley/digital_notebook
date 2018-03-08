@@ -46,6 +46,7 @@ def subset_records(*header_terms, records, length=0, mode="exclude"):
 
     return new_records
 
+
 def subset_records_with_regex(*header_terms, records, length=0, mode="exclude"):
     searchTerm = ""
     for term in header_terms:
@@ -62,6 +63,17 @@ def subset_records_with_regex(*header_terms, records, length=0, mode="exclude"):
             if (len(str(record.seq)) > length and regex.search(record.description)):
                 new_records[record.name] = record
 
+    return new_records
+
+def exclude_character(records, character, mode="exclude"):
+    new_records = {}
+    for record in records.values():
+        if (mode=="exclude"):
+            if character not in record.seq:
+                new_records[record.name] = record
+        elif (mode == "incldue" ):
+            if character in record.seq:
+                new_records[record.name] = record
     return new_records
 
 
@@ -125,7 +137,7 @@ def plot_record_number(records, plotType, min=0):
 
 
 
-def map_ids_to_records(records, full_dict, unique=False):
+def map_dict_to_records(records, full_dict, unique=False):
     out_records = []
     for idlist in records.values():
         if unique:
@@ -136,12 +148,12 @@ def map_ids_to_records(records, full_dict, unique=False):
     return out_records
 
 
-def map_species_to_records(records, full_dict, unique=False):
+def map_list_to_records(records, full_dict, unique=False):
     out_records = []
     for id in records:
-        if unique:
+        if unique and id in full_dict:
             out_records.append(full_dict[id])
-        else:
+        elif id in full_dict:
             out_records.append(full_dict[id])
     return out_records
 
@@ -159,6 +171,16 @@ def replaceWords(changes, file):
     for k,v in changes:
         file.replace(k,v)
     return file
+
+def getDifferentIDs(records1, records2):
+    ids1 = set(records1.keys())
+    ids2 = set(records2.keys())
+    return (ids1 - ids2)
+
+def getDifferentRecords(records1, records2):
+    ids = getDifferentIDs(records1, records2)
+    differentDict = {k: records1[k] for k in ids}
+    return differentDict
 
 
 # full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))
