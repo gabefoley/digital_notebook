@@ -4,6 +4,8 @@ Digital notebook is a collection of Python scripts and associated Jupyter notebo
 
 You can either call the Python scripts directly (they sit in the /src/ folder) or you can use or create new Jupyter notebooks. 
 
+There are examples of my personal notebooks in the /notebook folder and vanilla workflows to be used with your own data in the /workflows folder.
+
 This is a repository that contains the files so they can be used in local deployment - however the files will also soon be available to run entirely online.
 
 ## Dependencies for local deployment
