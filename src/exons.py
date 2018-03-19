@@ -315,6 +315,7 @@ def appendTagToSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
 
     fasta.write_fasta(outfile, outpath)
 
+
 def writeOutSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
 
     exon_records = []
@@ -344,7 +345,7 @@ def writeOutSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
 #         #                                                                                    records[seq].genome_positions[1]))
 #         print ('The exons are %s and the exon lengths are %s' % (records[seq].exons, records[seq].exon_lengths))
 
-# drawGenome()
+# draw_genome()
 
 
 def saveGenomicRecords(records, filepath):

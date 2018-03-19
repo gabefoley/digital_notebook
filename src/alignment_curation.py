@@ -11,6 +11,7 @@ accepted_percent = 0
 min_length = 16
 indexes = []
 
+
 def get_insertion_columns_at_index(alignment_list, col_index):
     for alignment in alignment_list:
         insertion_columns = []
@@ -30,7 +31,7 @@ for alignment in handle:
             percent_deletions = col_deletions / (len(col) - 1)
             if 1 - percent_deletions <= accepted_percent:
                 indexes.append(idx)
-print (indexes)
+print(indexes)
 
 n = 16
 for i in range(len(indexes)):
@@ -67,9 +68,9 @@ for i in range(len(indexes)):
             idx +=1
 
 
-
 def check_sequential():
     pass
+
 
 def check_position():
     pass

@@ -17,6 +17,7 @@ def updateTaxonomyDatabase():
 
 ncbi = NCBITaxa()
 
+
 def get_species_to_taxonomy_dict(tree):
     taxonomySet = set()
     for leaf in tree.get_leaf_names():
@@ -32,6 +33,7 @@ def get_species_to_taxonomy_dict(tree):
 
     #TODO: Fix this so that the dict values aren't in a list
     return taxonomy_dict
+
 
 def get_id_to_taxonomy_dict(tree, seq_type="protein"):
     seq_ids = []
@@ -68,6 +70,7 @@ def create_taxon_tree_from_id(tree, taxonomy_dict):
 
 
     return taxon_tree
+
 
 def annotate_nodes_based_on_taxonomy(tree):
     """
@@ -127,6 +130,7 @@ def collapse_tree(tree):
 
     return collapsed_tree
 
+
 def get_duplicate_leaves(tree):
     """
     Takes a phylogenetic tree and returns a list of duplicated leaf names (if any)
@@ -144,6 +148,7 @@ def get_duplicate_leaves(tree):
 
     return list(duplicate_leaf_names)
 
+
 def get_species_to_rank_dict(tree, rank):
     rank_dict = {}
     for node in tree.iter_descendants("postorder"):
@@ -156,6 +161,7 @@ def get_species_to_rank_dict(tree, rank):
                 else:
                     rank_dict[node.name] = "XXXX"
     return rank_dict
+
 
 def compare_tree_with_taxon_tree(*args, filepath, id="True", filepath_to_save_dict="", filepath_to_load_dict=""):
 
@@ -223,7 +229,6 @@ def compare_tree_with_taxon_tree(*args, filepath, id="True", filepath_to_save_di
 
         print ("\nThis is the collapsed NCBI tree based on %s \n" % rank)
         print (collapsed_ncbi_rank_tree)
-
 
         # Check if the collapsed rank tree has duplicate leaves (we won't be able to perform Robinson Foulds if it does
         duplicate_leaves = get_duplicate_leaves(collapsed_rank_tree)

@@ -1,12 +1,14 @@
-from Bio import AlignIO, SeqIO
 from Bio.Align.Applications import MafftCommandline, ClustalOmegaCommandline
 from Bio import AlignIO
 import io
-import re
 
 
-
-def alignWithMAFFT(filepath):
+def align_with_mafft(filepath):
+    """
+    Align a file with the given filepath using MAFFT
+    :param filepath: The file to align
+    :return: The MAFFT alignment
+    """
     mafft_cline = MafftCommandline(input=filepath)
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
@@ -15,25 +17,30 @@ def alignWithMAFFT(filepath):
 
 
 def align_with_clustal_omega(filepath):
+    """
+    Align a file with the given filepath using Clustal Omega
+    :param filepath: The file to align
+    :return: The Clustal Omega alignment
+    """
     clustal_omega_cline = ClustalOmegaCommandline(infile=filepath)
 
     stdout, stderr = clustal_omega_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
     return align
 
-def writeAlignment(file, filepath, format):
+
+def write_alignment(file, filepath, filetype):
     """
+    Write an alignment to file
     
-    :param file:
-    :param filepath:
-    :param format:
-    :return:
+    :param file: The alignment
+    :param filepath: The filepath to write to
+    :param filetype: The type of file to create
     """
-    AlignIO.write(file, filepath, format)
+    AlignIO.write(file, filepath, filetype)
 
 
-
-def getPercentIdentity(seq1, seq2, count_gaps=False):
+def get_percent_identity(seq1, seq2, count_gaps=False):
     """
     Calculate the percent identity between two aligned sequences
     :param seq1: First sequence
@@ -49,4 +56,3 @@ def getPercentIdentity(seq1, seq2, count_gaps=False):
     pct_identity = 100.0 * matches / length
 
     return pct_identity
-
