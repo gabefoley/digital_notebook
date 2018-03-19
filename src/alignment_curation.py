@@ -1,5 +1,6 @@
 from Bio import AlignIO, SeqIO, Entrez
 import re
+import fasta
 
 
 handle = list(AlignIO.parse(
@@ -112,5 +113,10 @@ def get_insertion_candidates(handle, min_length=0, ignore_edges=True, rank=True,
     """
 
 
-get_deletion_candidates(handle, 20)
+
+
+
+
+
+# get_deletion_candidates(handle, 20)
 

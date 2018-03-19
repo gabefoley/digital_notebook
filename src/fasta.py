@@ -1,12 +1,11 @@
 from Bio import SeqIO, Entrez
 from collections import defaultdict
-import plotly
-plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
-import plotly.plotly as py
-import plotly.graph_objs as go
-from plotly.graph_objs import *
+# import plotly
+# plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
+# import plotly.plotly as py
+# import plotly.graph_objs as go
+# from plotly.graph_objs import *
 import re
-
 
 out_records =[]
 
@@ -45,6 +44,89 @@ def subset_records(*header_terms, records, length=0, mode="exclude"):
                 new_records[record.name] = record
 
     return new_records
+
+def addSpeciesFromHeader(records):
+    """ Add species names that exist within the header of the seq ID i.e. like [Amazona aestiva] to a dictionary of
+    seqRecords
+    Add
+    :param records: The dictionary to update with species names
+    :return:
+    """
+
+    for record in records:
+        if "[" in records[record].description:
+            species_name = records[record].description.split(">")[0].split("[")[1].split("]")[0]
+            records[record].annotations["Species"] = species_name
+    return records
+
+def getRecordsWithoutSpecies(records):
+    """
+    Get the entries in a seq records file that don't have a species annotated with them
+    :param records: The records to check
+    :return: The list of seq IDs missing species information
+    """
+    missing = []
+
+    for record in records.values():
+        if not "Species" in record.annotations:
+            missing.append(record.id)
+
+    return missing
+
+def reportRecordsWithoutSpecies(records):
+    """
+    Print out statements about whether entries in a seq record file have annotated species
+    :param records:
+    :return:
+    """
+    missing = getRecordsWithoutSpecies(records)
+    if missing:
+        print("The following records do not have species annotated", [x for x in missing])
+    else:
+        print("All of the records have a species annotated")
+
+def checkCDHitOutput(records, cdhit_output):
+    """
+    Reports on the species information that occurs within clusters in CD-hit output
+    :param records:
+    :param cdhit_output:
+    :return:
+    """
+
+    if getRecordsWithoutSpecies(records):
+        records = addSpeciesFromHeader(records)
+        if getRecordsWithoutSpecies(records):
+            print ("Some of your entries are missing their species annotation")
+            return
+
+    clusters = defaultdict(list)
+    current = None
+
+    # Read in and organise the CD-HIT output
+    for record in records.values():
+
+        for line in cdhit_output:
+            if ("Cluster") in line:
+                current = line
+
+            if ("Cluster") not in line:
+
+                clusters[current].append(re.sub(r"\s+", " ", line))
+
+    # Only interested in clusters with more than one sequence
+    for cluster in clusters.values():
+        if len(cluster) > 1:
+            for seq in cluster:
+                trim = re.search('>(.*)\.\.\.', seq)
+                seqID = trim.group(1).strip()
+                if "*" in seq:
+                    print ("Retained ", seqID, records[seqID].annotations["Species"])
+                else:
+                    print ("Removed", seqID, records[seqID].annotations["Species"])
+            print ("")
+
+
+
 
 
 def subset_records_with_regex(*header_terms, records, length=0, mode="exclude"):
@@ -135,9 +217,17 @@ def plot_record_number(records, plotType, min=0):
 
     return data
 
+def map_dict_to_records(records, full_dict={}, unique=False):
+    # If full_dict hasn't been provided, take records as the full dictionary
+    if not full_dict:
+        print ('empty dict')
+        full_dict = records
+    out_records = []
+    for record in records.values():
+        out_records.append(full_dict[record.id])
+    return out_records
 
-
-def map_dict_to_records(records, full_dict, unique=False):
+def map_species_dict_to_records(records, full_dict, unique=False):
     out_records = []
     for idlist in records.values():
         if unique:
@@ -182,10 +272,51 @@ def getDifferentRecords(records1, records2):
     differentDict = {k: records1[k] for k in ids}
     return differentDict
 
+def subsetOnMotif(records, motif, retain_motif_seqs = True):
+    """
+    Subset a set of records based on the presence of a motif.
+
+    :param motif: The motif to check for
+    :param exclude: Whether we should retain sequences with the motif or exclude them
+    :return: The subseted records based on the presence of the motif
+    """
+    subset_records = {}
+
+    pattern=re.compile(motif)
+    count = 1
+
+    for record in records.values():
+        if (len(pattern.findall(str(record.seq))) > 0 and retain_motif_seqs) or (len(pattern.findall(str(record.seq))) == 0 and not retain_motif_seqs):
+            subset_records[record.id] = record
+        else:
+            print (count)
+            print(record.id, pattern.findall(str(record.seq)))
+            count +=1
+
+    return subset_records
+
+
 
 # full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))
-# full_record = SeqIO.to_dict(SeqIO.parse("files/test/alligatortest.fasta", "fasta"))
+# full_record = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/2U1_50_percent_tagged.fasta", "fasta"))
 #
+# motifSeqs = subsetOnMotif(full_record, '[FW][SGNH].[GD][^F][RKHPT][^P]C[LIVMFAP][GAD]', retain_motif_seqs=True)
+
+# for record in motifSeqs.values():
+#     print (record.name)
+#
+# write_fasta(motifSeqs.values(), "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/2U1_50_percent_motif.fasta" )
+
+# seq1 = "NPS"
+# seq2 = "NASNAS"
+# seq3 = "NAT"
+#
+# pattern = re.compile('N[^P][ST]')
+#
+# if len(pattern.findall(seq2)) > 0:
+#     print ('found some')
+
+
 # only_2U1_records = subset_records("2U1", "2U1-like", records=full_record, length=400, mode="include")
 #
 # print (only_2U1_records)
