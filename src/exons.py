@@ -31,7 +31,9 @@ def mapExons (records):
     :param records: The set of protein sequences
     :return: The exon coordinates
     """
-
+    # for record in records:
+    #     print (record)
+    #     print (type(record))
     genomic_records = {}
 
     for record in records:
@@ -350,6 +352,11 @@ def writeOutSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
 
 def saveGenomicRecords(records, filepath):
 
+
+    # If records is a dictionary convert it into a list of the records
+    if type(records) == dict:
+        records = [record for record in records.values()]
+
     genomic_records = mapExons(records)
     utilities.savePythonObject(genomic_records, filepath)
 
@@ -359,6 +366,12 @@ def openGenomicRecords(filepath):
 
 
 def mapExonBoundariesToAlignment(records, genomic_records):
+
+    # If records is a dictionary convert it into a list of the records
+    if type(records) == dict:
+        records = [record for record in records.values()]
+
+
 
     # exons = {'XP_019684690.2' : [178, 167, 161, 635, 489], 'XP_009883824.1' : [178, 167, 161, 705, 82], 'XP_014065111.1' : [181, 167, 161, 334, 318, 441] }
     # exons = {'XP_019684690.2' : [3, 3, 2, 1], 'XP_009883824.1' : [2, 2, 1], 'XP_014065111.1' : [4] }
@@ -490,20 +503,10 @@ def mapExonBoundariesToAlignment(records, genomic_records):
 
 
 # filepath = 'problem.obj'
-genome_mapping = list(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/2U1_50percent.aln",
-    "fasta"))
-filepath = 'files/objects/genome_mapping.obj'
-# saveGenomicRecords(genome_mapping, filepath)
 
-genomic_records = openGenomicRecords(filepath)
 
-# for x in genomic_records:
-#     print (x)
-
-mapExonBoundariesToAlignment(genome_mapping, genomic_records)
-
-fifty_percent = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/2U1_50_percent.fasta",
-    "fasta"))
+# fifty_percent = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/2U1_50_percent.fasta",
+#     "fasta"))
 
 # counts = get_feature_counts(genomic_records)
 # print (counts.keys())

@@ -8,7 +8,7 @@ import pickle
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
 
-def loadSequences(*args):
+def load_sequences(*args):
     '''
     Join multiple sequence files together
     :param args: The sequence files to open
@@ -54,7 +54,7 @@ def saveIDs(*args, percent_identity="", output_dir="", concatenate=False):
         # If we're not concatenating lets write this out to the
         if not concatenate:
             # Remove any existing previous file at this location
-            removeFile(output_dir + outpath)
+            remove_file(output_dir + outpath)
 
             # Write out the sequences to the output path
             getIDs(id_list, output_dir + outpath)
@@ -156,7 +156,7 @@ def randstring(length=10):
     return ''.join((random.choice(valid_letters) for i in range(length)))
 
 
-def removeFile(*args):
+def remove_file(*args):
     """
     Remove files in the list from the directory
 
