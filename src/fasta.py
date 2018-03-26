@@ -38,8 +38,6 @@ def build_species_count(*exclude_on, records, length=0):
     return species_count
 
 
-
-
 def subset_records(*header_terms, records, length=0, mode="exclude"):
     """
     Return a subset of records, by defining terms that should or shouldn't be in the header and a minimum length
@@ -65,7 +63,6 @@ def subset_records(*header_terms, records, length=0, mode="exclude"):
 def add_species_from_header(records):
     """ Add species names that exist within the header of the seq ID i.e. like [Amazona aestiva] to a dictionary of
     seqRecords
-    Add
     :param records: The dictionary to update with species names
     :return:
     """
@@ -73,6 +70,19 @@ def add_species_from_header(records):
     for record in records:
         if "[" in records[record].description:
             species_name = records[record].description.split(">")[0].split("[")[1].split("]")[0]
+            records[record].annotations["Species"] = species_name
+    return records
+
+
+def add_species_from_last_position(records):
+    """ Add species names that exist within the last positiong of the seq ID to a dictionary of seqRecords
+    :param records: The dictionary to update with species names
+    :return:
+    """
+
+    for record in records:
+        if "_" in records[record].description:
+            species_name = records[record].description.split("_")[-1]
             records[record].annotations["Species"] = species_name
     return records
 
@@ -320,7 +330,6 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
             count +=1
 
     return subset_records
-
 
 
 # full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))

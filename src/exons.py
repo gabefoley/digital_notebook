@@ -358,10 +358,10 @@ def saveGenomicRecords(records, filepath):
         records = [record for record in records.values()]
 
     genomic_records = mapExons(records)
-    utilities.savePythonObject(genomic_records, filepath)
+    utilities.save_python_object(genomic_records, filepath)
 
 def openGenomicRecords(filepath):
-    genomic_records = utilities.openPythonObject(filepath)
+    genomic_records = utilities.open_python_object(filepath)
     return genomic_records
 
 

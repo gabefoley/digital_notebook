@@ -145,8 +145,10 @@ def build_taxonomy_dict(seq_ids, seq_type="protein"):
     for seq_id in seq_ids:
         handle = Entrez.elink(dbfrom=seq_type, db="taxonomy", id=seq_id)
         records = Entrez.read(handle)
-        print(records)
-        taxonomy_dict[seq_id] = records[0]["LinkSetDb"][0]["Link"][0]['Id']
+        if len(records[0]["LinkSetDb"]) > 0:
+            taxonomy_dict[seq_id] = records[0]["LinkSetDb"][0]["Link"][0]['Id']
+        else:
+            taxonomy_dict[seq_id] = 0000
 
     return taxonomy_dict
 
@@ -170,7 +172,7 @@ def remove_file(*args):
             os.remove(arg)
 
 
-def savePythonObject(object, filepath):
+def save_python_object(object, filepath):
     """
     Save a python object into the given filepath
     :param object: The object to save
@@ -181,7 +183,7 @@ def savePythonObject(object, filepath):
     pickle.dump(object, file_path)
 
 
-def openPythonObject(filepath):
+def open_python_object(filepath):
     file = open(filepath, 'rb')
     object = pickle.load(file)
     return object
