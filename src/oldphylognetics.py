@@ -30,12 +30,6 @@ def get_species_to_taxonomy_dict(tree):
 
 
 def get_id_to_taxonomy_dict(tree, seq_type="protein"):
-    """
-    Create a dictionary that maps sequence ID to taxonomy ID
-    :param tree: The tree to extract the sequence IDs from
-    :param seq_type: The type of sequences
-    :return: The dictionary mapping sequence ID to taxonomy ID
-    """
     seq_ids = []
     for leaf in tree.get_leaf_names():
         seq_id = leaf.split(" ")[0]
@@ -45,6 +39,10 @@ def get_id_to_taxonomy_dict(tree, seq_type="protein"):
     taxonomy_dict = utilities.build_taxonomy_dict(seq_ids, seq_type)
     return taxonomy_dict
 
+
+# print (taxonomySet)
+# name2taxid = ncbi.get_name_translator(list(taxonomySet))
+# print (name2taxid)
 
 def create_taxon_tree_from_species(tree, taxonomy_dict):
 
@@ -63,6 +61,7 @@ def create_taxon_tree_from_id(tree, taxonomy_dict):
     for leaf in taxon_tree:
         seq_id = leaf.name.split(" ")[0]
         leaf.name = taxonomy_dict[seq_id]
+
 
     return taxon_tree
 
@@ -99,6 +98,15 @@ def get_ncbi_tree(taxonomy_dict):
     ncbi_tree = ncbi.get_topology([x for x in taxonomy_dict.values()])
     return ncbi_tree
 
+
+# print (latestTree.get_ascii(show_internal=True))
+# print (node2labels)
+# print (latestTree.write(is_leaf_fn=collapsed_leaf))
+
+
+# print (ncbi_tree.get_ascii(attributes=["sci_name", "rank"]))
+# print (collapsed_tree)
+# print (latestTree)
 
 def collapse_tree(tree):
 
@@ -216,7 +224,7 @@ def compare_tree_with_taxon_tree(*args, filepath, id="True", filepath_to_save_di
         print ("\nThis is the collapsed NCBI tree based on %s \n" % rank)
         print (collapsed_ncbi_rank_tree)
 
-        # Check if the collapsed rank tree has duplicate leaves (we won't be able to perform Robinson Foulds if it does)
+        # Check if the collapsed rank tree has duplicate leaves (we won't be able to perform Robinson Foulds if it does
         duplicate_leaves = get_duplicate_leaves(collapsed_rank_tree)
 
         if not duplicate_leaves:
@@ -232,6 +240,13 @@ def compare_tree_with_taxon_tree(*args, filepath, id="True", filepath_to_save_di
             print ("\nThese leaves were duplicated in the original collapsed %s tree" % (rank))
             print (duplicate_leaves)
 
+
+
+# print (latestTree)
+# ncbi_tree.write(format=3, outfile="species_tree.nwk")
+# latestTree.write(format=1, outfile="latest_tree.nwk")
+# latestTree = ete3.Tree("files/2U1_tree_rerooted_removed.nwk", format=1)
+# latestTree = ete3.Tree("files/2U1_removed.nwk", format=1)
 
 # test = ["files/taxon_annotate"]
 test = ["files/test"]

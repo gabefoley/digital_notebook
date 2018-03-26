@@ -45,7 +45,7 @@ for i in range(len(indexes)):
             else:
 
                 # Get the list of alignments that have
-                insertion_cols = get_alignment_columns_at_index(handle, window[idx])
+                insertion_cols = get_insertion_columns_at_index(handle, window[idx])
 
                 if (idx == 0):
                     prev_insertion_cols = intersection = insertion_cols

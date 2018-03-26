@@ -29,6 +29,17 @@ def align_with_clustal_omega(filepath):
     return align
 
 
+def read_alignment(filepath, filetype):
+    """
+    Read an alignment from file
+    :param filepath: Filepath to read from
+    :param filetype: The type of file we're reading
+    :return: The alignment from file
+    """
+
+    return AlignIO.read(filepath, filetype)
+
+
 def write_alignment(file, filepath, filetype):
     """
     Write an alignment to file

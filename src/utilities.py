@@ -131,7 +131,7 @@ def addHeaderTerms(sender, header_terms):
         header_terms.append(item)
 
 
-def buildTaxonomyDict(seq_ids, seq_type="protein"):
+def build_taxonomy_dict(seq_ids, seq_type="protein"):
     """
     Take a list of sequence ids and return a dictionary mapping those ids to their taxonomic ID
 

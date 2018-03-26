@@ -38,6 +38,8 @@ def build_species_count(*exclude_on, records, length=0):
     return species_count
 
 
+
+
 def subset_records(*header_terms, records, length=0, mode="exclude"):
     """
     Return a subset of records, by defining terms that should or shouldn't be in the header and a minimum length
@@ -322,14 +324,21 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
 
 
 # full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))
-# full_record = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi
-# nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/2U1_50_percent_tagged.fasta",
+# full_record = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/2U1_50_percent_tagged.fasta",
 # "fasta"))
+# # motifSeqs = subset_on_motif(full_record, '[FW][SGNH].[GD][^F][RKHPT][^P]C[LIVMFAP][GAD]', retain_motif_seqs=True)
 #
-# motifSeqs = subset_on_motif(full_record, '[FW][SGNH].[GD][^F][RKHPT][^P]C[LIVMFAP][GAD]', retain_motif_seqs=True)
-
+# original_motifSeqs = subset_on_motif(full_record, '[FW][SGNH].[GD][^F][RKHPT][^P]C[LIVMFAP][GAD]', retain_motif_seqs=False)
+# motifSeqs = subset_on_motif(full_record, '[F]..[G]...C.[G]', retain_motif_seqs=False)
+# # FXXGXbXXCXG
+#
+# print (len(original_motifSeqs))
+# print (len(motifSeqs))
+# for x in original_motifSeqs:
+#     if x not in motifSeqs:
+#         print (x)
 # for record in motifSeqs.values():
-#     print(record.name)
+# #     print(record.name)
 #
 # write_fasta(motifSeqs.values(), "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes
 # insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/2U1_50_percent_motif.fasta" )

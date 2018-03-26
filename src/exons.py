@@ -399,10 +399,11 @@ def mapExonBoundariesToAlignment(records, genomic_records):
         # print (genomic_records[record].exons)
 
         # skip_records = ['XP_010997363.1', 'XP_006162319.2', 'XP_005406339.2', 'XP_014050304.1'] # This was the skip records for 55% identity
-        skip_records = ['XP_010997363.1', 'XP_021107396.1', 'XP_002607780.1', 'PIK57532.1', 'PIK38219.1', 'XP_002605102.1', 'XP_006825012.1', 'XP_014801266.1', 'XP_021107397.1', 'XP_006162319.2', 'PIO41157.1', 'XP_005406339.2', 'KYO44822.1', 'KTF79201.1', 'XP_014379039.1', 'XP_013865517.1',  'XP_006520454.1', 'ELW64418.1', 'XP_016094679.1', 'EPY81189.1', 'XP_016404253.1', 'XP_006768464.1', 'XP_013766542.1', 'XP_006123186.1', 'XP_014050304.1', 'ETE67196.1', 'KTF79021.1', 'OBS74422.1', 'XP_004671492.1', 'EMP40787.1', 'KFO25848.1','KKF09825.1'] # This was the skip records for 50% identity
+        # skip_records = ['XP_010997363.1', 'XP_021107396.1', 'XP_002607780.1', 'PIK57532.1', 'PIK38219.1', 'XP_002605102.1', 'XP_006825012.1', 'XP_014801266.1', 'XP_021107397.1', 'XP_006162319.2', 'PIO41157.1', 'XP_005406339.2', 'KYO44822.1', 'KTF79201.1', 'XP_014379039.1', 'XP_013865517.1',  'XP_006520454.1', 'ELW64418.1', 'XP_016094679.1', 'EPY81189.1', 'XP_016404253.1', 'XP_006768464.1', 'XP_013766542.1', 'XP_006123186.1', 'XP_014050304.1', 'ETE67196.1', 'KTF79021.1', 'OBS74422.1', 'XP_004671492.1', 'EMP40787.1', 'KFO25848.1','KKF09825.1'] # This was the skip records for 50% identity
 
         # skip_records = ['XP_010224405.1', 'XP_014050304.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
         # skip_records = ['XP_010224405.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
+        skip_records = []
 
         # print (record.id)
         # print (genomic_records)
@@ -422,7 +423,7 @@ def mapExonBoundariesToAlignment(records, genomic_records):
                 # print (count,int(math.ceil(exon/3)))
                 buildseq += str(count+1) * int(math.ceil((exon / 3)))
 
-            # print (record)
+            print (record)
             # print (buildseq)
             # print (record.seq)
             print(record.id)
@@ -529,4 +530,13 @@ def mapExonBoundariesToAlignment(records, genomic_records):
 # mapExonBoundariesToAlignment(errors, genomic_records)
 
 
+# Open the file
 
+# high_number_exons = utilities.load_sequences("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/high_number_exons.aln")
+no_automatic_exons = utilities.load_sequences("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/no_automatic_exons.fasta")
+
+filepath = '../files/objects/no_automatic_exons.obj'
+saveGenomicRecords(no_automatic_exons, filepath)
+
+genomic_records = openGenomicRecords(filepath)
+mapExonBoundariesToAlignment(no_automatic_exons, genomic_records)
