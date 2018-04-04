@@ -1,5 +1,6 @@
 import ete3
 import utilities
+from collections import defaultdict
 
 ncbi = ete3.NCBITaxa()
 
@@ -11,16 +12,17 @@ def update_taxonomy_database():
     ncbi.update_taxonomy_database()
 
 
-def get_id_to_taxonomy_dict(tree, seq_type="protein"):
+def get_id_to_taxonomy_dict(tree, seq_type="protein", split_char=" "):
     """
     Create a dictionary that maps sequence ID to taxonomy ID
     :param tree: The tree to extract the sequence IDs from
     :param seq_type: The type of sequences
+    :param split_char: The character to split on to get the ID
     :return: The dictionary mapping sequence ID to taxonomy ID
     """
     seq_ids = []
     for leaf in tree.get_leaf_names():
-        seq_id = leaf.split("|")[0]
+        seq_id = leaf.split(split_char)[0]
         seq_ids.append(seq_id)
 
     # Map the seq IDs to taxon IDs
@@ -28,12 +30,21 @@ def get_id_to_taxonomy_dict(tree, seq_type="protein"):
     return taxonomy_dict
 
 
-def create_taxon_tree_from_id(tree, taxonomy_dict):
+def create_taxon_tree_from_id(tree, taxonomy_dict, split_char=" "):
+    """
+
+    Create a
+
+    :param tree:
+    :param taxonomy_dict:
+    :param split_char:
+    :return:
+    """
 
     taxon_tree = tree.copy()
 
     for leaf in taxon_tree:
-        seq_id = leaf.name.split("|")[0]
+        seq_id = leaf.name.split(split_char)[0]
         if seq_id in taxonomy_dict:
             leaf.name = taxonomy_dict[seq_id]
         elif seq_id != "XXXX" and seq_id[0:len(seq_id) - 3] != "XXXX":
@@ -126,17 +137,18 @@ def change_duplicate_leaves(tree):
     return unique_tree
 
 
-def get_unique_tree(tree, name):
+def get_unique_tree(tree, name, print_duplicates):
     """
     Check if a tree has duplicate leaves and change tree into a unique tree
     :param tree: The tree to check
     :param name: The name of the tree
+    :param print_duplicates: Whether we should print the list of duplicated leaves
     :return: The unique tree
     """
 
     duplicate_leaves = get_duplicate_leaves(tree)
 
-    if duplicate_leaves:
+    if duplicate_leaves and print_duplicates:
         print("\nThese leaves were duplicated in the collapsed %s tree" % name)
         print(duplicate_leaves)
 
@@ -147,10 +159,17 @@ def get_unique_tree(tree, name):
 def check_robinson_foulds(tree1, tree2, tree1_name="tree1", tree2_name="tree2", print_partitions=False):
     rf, max_rf, common_leaves, parts_t1, parts_t2, set1, set2 = tree1.robinson_foulds(
         tree2, unrooted_trees=True)
-    print("\nRF distance between %s and %s is %s over a total of %s" % (tree1_name, tree2_name, rf, max_rf))
+    # print("\nRF distance between %s and %s is %s over a total of %s" % (tree1_name, tree2_name, rf, max_rf))
     if print_partitions:
         print("Partitions in %s that were not found in %s: %s" % (tree1_name, tree2_name, parts_t2 - parts_t1))
         print("\nPartitions in %s that were not found in %s: %s" % (tree2_name, tree1_name, parts_t1 - parts_t2))
+
+def get_robinson_foulds(tree1, tree2):
+    rf = tree1.robinson_foulds(
+        tree2, unrooted_trees=True)
+    return rf[0]
+
+
 
 
 def get_species_to_rank_dict(tree, rank):
@@ -202,10 +221,11 @@ def get_rank_to_taxon_name(tree):
     return taxon_dict
 
 
-def compare_tree_with_taxon_tree(*args, filepath, print_trees=False, print_partitions=False, filepath_to_save_dict="",
-                                 filepath_to_load_dict="", outpath=""):
+def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=False, print_duplicates=False, print_partitions=False, filepath_to_save_dict="",
+                                 filepath_to_load_dict="", outpath="", resultspath=""):
 
     tree = ete3.Tree(filepath, format=1)
+    rf_dict = defaultdict(list)
 
     # If user wants to load the taxonomy dictionary from file
     if filepath_to_load_dict:
@@ -215,7 +235,7 @@ def compare_tree_with_taxon_tree(*args, filepath, print_trees=False, print_parti
         # If we don't already have a taxonomy dict, create one
         taxonomy_dict = get_id_to_taxonomy_dict(tree)
 
-    taxon_tree = create_taxon_tree_from_id(tree, taxonomy_dict)
+    taxon_tree = create_taxon_tree_from_id(tree, taxonomy_dict, split_char=split_char)
 
     # If user wants to save the taxonomy dictionary to file
     if filepath_to_save_dict:
@@ -231,8 +251,9 @@ def compare_tree_with_taxon_tree(*args, filepath, print_trees=False, print_parti
         print("\nThis is the NCBI species tree\n")
         print(ncbi_tree)
 
-    unique_taxon_tree = get_unique_tree(taxon_tree, "Original")
-    check_robinson_foulds(unique_taxon_tree, ncbi_tree, tree1_name="Original", tree2_name="NCBI")
+    # unique_taxon_tree = get_unique_tree(taxon_tree, "Original", print_duplicates=print_duplicates)
+    # check_robinson_foulds(unique_taxon_tree, ncbi_tree, tree1_name="Original", tree2_name="NCBI")
+    # rf = get_robinson_foulds()
 
     for rank in args:
 
@@ -264,11 +285,12 @@ def compare_tree_with_taxon_tree(*args, filepath, print_trees=False, print_parti
 
         # Get a unique version of the collapsed rank tree (we won't be able to perform Robinson Foulds if it isn't)
 
-        unique_collapsed_rank_tree = get_unique_tree(collapsed_rank_tree, rank)
-        unique_collapsed_ncbi_rank_tree = get_unique_tree(collapsed_ncbi_rank_tree, rank)
+        unique_collapsed_rank_tree = get_unique_tree(collapsed_rank_tree, rank, print_duplicates=print_duplicates)
+        unique_collapsed_ncbi_rank_tree = get_unique_tree(collapsed_ncbi_rank_tree, rank, print_duplicates=print_duplicates)
         check_robinson_foulds(unique_collapsed_rank_tree, unique_collapsed_ncbi_rank_tree,
                               tree1_name="Supplied tree on basis of " + rank,
                               tree2_name="NCBI tree on basis of " + rank, print_partitions=print_partitions)
+
 
         # Create lineage dictionaries
         lineage_dict = get_rank_to_lineage_names(ncbi_tree)
@@ -288,7 +310,20 @@ def compare_tree_with_taxon_tree(*args, filepath, print_trees=False, print_parti
             unique_lineage_rank_tree.write(outfile=outpath + "_" + rank + "_unique_lineage_rank_tree.nwk")
             ncbi_lineage_rank_tree.write(outfile=outpath + "_" + rank + "_ncbi_lineage_rank_tree.nwk")
 
-# compare_tree_with_taxon_tree("order", filepath="/Users/gabefoley/Dropbox/PhD/Smaller Projects/GRASP tree/24.nwk",
+        if resultspath:
+            rf = get_robinson_foulds(unique_collapsed_rank_tree, unique_collapsed_ncbi_rank_tree)
+            path = filepath.split("/")[-1]
+            split_path = path.split("_")
+
+            rf_dict[path].append(rf)
+
+
+    for k, v in rf_dict.items():
+        print (k, v)
+
+
+
+        # compare_tree_with_taxon_tree("order", filepath="/Users/gabefoley/Dropbox/PhD/Smaller Projects/GRASP tree/24.nwk",
             # print_partitions=True, filepath_to_load_dict="../notebooks/files/24.obj",
             # outpath="../notebooks/files/24again")
 

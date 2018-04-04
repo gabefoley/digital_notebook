@@ -1,14 +1,15 @@
-from Bio import SeqIO, SeqRecord
+from Bio import SeqIO, Phylo
 from Bio import Entrez
 import pandas as pd
 import random
 import os
 import pickle
+import ete3
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
 
-def load_sequences(*args):
+def load_sequences(*args, split_char=""):
     '''
     Join multiple sequence files together
     :param args: The sequence files to open
@@ -19,7 +20,23 @@ def load_sequences(*args):
     for file in args:
         current_handle = SeqIO.to_dict(SeqIO.parse(file, "fasta"))
         full_dict.update(current_handle)
+
+    for name in full_dict.keys():
+        if name.startswith("pdb") or name.startswith("sp") or name.startswith("tr") or name.startswith("gi"):
+            full_dict[name].id = name.split("|")[1]
+
+
+        ## Split on the given symbol if it is in the header
+        elif split_char:
+            if split_char in name:
+                full_dict[name].id = name.split(split_char)[0]
+
     return full_dict
+
+
+def load_tree(filepath, format=1):
+    tree = ete3.Tree(filepath, format=format)
+    return tree
 
 
 

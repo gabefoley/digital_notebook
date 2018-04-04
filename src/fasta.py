@@ -1,12 +1,11 @@
 from Bio import SeqIO, Entrez
 from collections import defaultdict
 import plotly
-plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
+import utilities
 import plotly.plotly as py
 import plotly.graph_objs as go
 from plotly.graph_objs import *
-import re
-
+plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
 
 def print_record_overview(records):
     """
@@ -330,6 +329,76 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
             count +=1
 
     return subset_records
+
+def correct_phylip_tree(records_path, phylip_file_path, outpath):
+    """
+    Using a dictionary mapping full id to PHYLIP id, change a PHYLIP annotated tree back to the full ID
+    :param records: The alignment we will retrieve the original IDs from
+    :param phylip_file: The tree with the truncated PHYLIP ids
+    :return:
+    """
+    records = utilities.load_sequences(records_path)
+    phylip_tree = utilities.load_tree(phylip_file_path)
+    phylip_correction_dict = generate_phylip_correction_dictionary(records)
+    print (phylip_correction_dict)
+    # Temporary correction to non-unique names
+    phylip_correction_dict["LIONS"] = "XP_021429049.1"
+    phylip_correction_dict["CLAMS"] = "XP_018919738.1"
+
+
+
+    for node in phylip_tree:
+        print (node.name)
+        if node.name in phylip_correction_dict:
+            node.name = phylip_correction_dict[node.name]
+
+    phylip_tree.write(outfile=outpath)
+
+
+
+
+def generate_phylip_correction_dictionary(records, outpath=""):
+    """
+    Create a dictionary to map full id to a generated PHYLIP id, for cases when PHYLIP ids would be non-unique
+    :return:
+    """
+
+    phylip_correction_dict = {}
+    for record in records.values():
+        if record.name[0:10] in phylip_correction_dict and not outpath:
+            print("The PHYLIP names are non-unique")
+            print (record.name[0:10])
+            print (record.name)
+        elif outpath:
+            pass
+        else:
+            phylip_correction_dict[record.name[0:10]] = record.name
+
+    return phylip_correction_dict
+
+
+
+# correct_phylip_tree("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and "
+#                     "bacteria/180312_fifty_percent_identity/Complete_sequences/PHYLIP_files/"
+#                     "2U1_complete_probcons_removed.aln", "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding "
+#                                                       "plants fungi nematodes insects and bacteria/"
+#                                                       "180312_fifty_percent_identity/Complete_sequences/PHYLIP_files/"
+#                                                       "PhyML_ProbCons.nwk", "/Users/gabefoley/Dropbox/PhD/Projects/2U1/"
+#                                                                          "2U1_2018/Excluding plants fungi nematodes "
+#                                                                          "insects and bacteria/180312_fifty_percent"
+#                                                                          "_identity/Complete_sequences/"
+#                                                                          "PHYLIP_files/PhyML_ProbCons_corrected.nwk")
+
+# correct_phylip_tree("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and "
+#                     "bacteria/180312_fifty_percent_identity/Complete_sequences/PHYLIP_files/"
+#                     "2U1_complete_probcons_removed.aln", "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding "
+#                                                       "plants fungi nematodes insects and bacteria/"
+#                                                       "180312_fifty_percent_identity/Complete_sequences/PHYLIP_files/"
+#                                                       "PhyML_ProbCons.nwk", "/Users/gabefoley/Dropbox/PhD/Projects/2U1/"
+#                                                                          "2U1_2018/Excluding plants fungi nematodes "
+#                                                                          "insects and bacteria/180312_fifty_percent"
+#                                                                          "_identity/Complete_sequences/"
+#                                                                          "PHYLIP_files/PhyML_ProbCons_corrected.nwk")
 
 
 # full_record = SeqIO.to_dict(SeqIO.parse("files/candidates/regextest.fasta", "fasta"))
