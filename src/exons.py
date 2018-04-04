@@ -1,87 +1,59 @@
 from GenomicRecord import GenomicRecord
 from Bio import SeqIO, Entrez
 from collections import defaultdict
-from dictsearch.search import iterate_dictionary
-from Bio.Graphics import GenomeDiagram
-from Bio.SeqFeature import SeqFeature, FeatureLocation
-from reportlab.lib.units import cm
 import fasta
 import re
 import math
-import pickle
 from urllib.request import urlopen
 import utilities
+from bs4 import BeautifulSoup as Soup
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
 
-# small = SeqIO.to_dict(SeqIO.parse("files/exons/small.fasta", "fasta"))
-# homo_sapiens_broken = SeqIO.to_dict(SeqIO.parse("files/exons/homo_sapiens_broken.fasta", "fasta"))
-# uniprot = SeqIO.to_dict(SeqIO.parse("files/exons/uniprot.fasta", "fasta"))
-#
-# latest_2U1 = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent.fasta", "fasta"))
-# latest_2U1_cutdown = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent_cutdown.fasta", "fasta"))
-# latest_2U1_2seqs = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent_2seqs.fasta", "fasta"))
-# latest_2U1_3seqs = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent_3seqs.fasta", "fasta"))
-# latest_2U1_3seqs = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent_3seqs.fasta", "fasta"))
-
-def mapExons(records):
+def map_exons(records):
     """
     Take a set of protein sequences and map them back to their exon coordinates from their genomic location
     :param records: The set of protein sequences
     :return: The exon coordinates
     """
-    # for record in records:
-    #     print (record)
-    #     print (type(record))
     genomic_records = {}
 
     for record in records:
-        # print (record.id)
-        try:
-            protein_id = record.id
+        # try:
+        search_id = record.id
+        protein_record = True
 
-            if protein_id.startswith("tr"):
-                protein_id = protein_id.split("|")[1]
+        # If it isn't an NCBI sequence, lets try and map it to the UniProt database
+        if record.annotations["Database"] != "NCBI":
+            handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
+            soup = Soup(handle, "lxml")
+            search_id = soup.find('property', type="protein sequence ID")["value"]
 
-                handle = urlopen("https://www.uniprot.org/uniprot/" + protein_id + ".xml")
-                record = SeqIO.read(handle, "uniprot-xml")
-                # print (record)
-                for ref in record.dbxrefs:
-                    if ref.startswith('EnsemblFungi'):
-                        protein_id = (ref.split(":")[1])
-
-                print ('This is the protein id')
-                print(protein_id)
-
-                # handle = Entrez.efetch(db="protein", id=gene_id, rettype="gb", retmode="xml")
-                #
-                # gene_record = Entrez.read(handle, validate=False)
-
-                # print (gene_record)
-
-            elif "|" in protein_id:
-                protein_id = protein_id.split("|")[0]
-
+        if protein_record:
             # Map the protein to a gene
-            handle = Entrez.elink(dbfrom="protein", db='gene', id=protein_id)
+            handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id)
             mapping = Entrez.read(handle, validate=False)
 
-            print ('This is the mapping')
-            print(mapping)
+            print('This is the protein id')
+            print(search_id)
+
+            # print ('This is the mapping')
+            # print(mapping)
 
             # Retrieve the gene ID
             for term in mapping:
-                if (term['LinkSetDb']):
-                    if (term['LinkSetDb'][0]['Link'][0]['Id']):
-                        gene_id = (term['LinkSetDb'][0]['Link'][0]['Id'])
+                if term['LinkSetDb']:
+                    if term['LinkSetDb'][0]['Link'][0]['Id']:
+                        gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
                 else:
                     gene_id = None
                     break
-            if gene_id == None:
-                print('was none')
-                print(protein_id)
-                handle = Entrez.efetch(db="protein", id=protein_id, rettype="gb", retmode="xml")
+
+            if gene_id is None:
+                print("Couldn't map the NCBI protein ID to a gene automatically")
+                print(search_id)
+                handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
 
                 genome_record = Entrez.read(handle, validate=False)
                 # print (genome_record)
@@ -90,8 +62,8 @@ def mapExons(records):
                     feature_table = term['GBSeq_feature-table']
                     # print (feature_table[0].keys())
                     for pos in range(0, len(feature_table)):
-                        if 'GBFeature_key' in feature_table[pos].keys() and feature_table[pos][
-                            'GBFeature_key'] == 'CDS':
+                        if 'GBFeature_key' in feature_table[pos].keys() and \
+                                        feature_table[pos]['GBFeature_key'] == 'CDS':
                             # print (feature_table[pos])
                             # i = feature_table[pos]['GBFeature_location']
                             feature_names = feature_table[pos]['GBFeature_quals']
@@ -102,44 +74,39 @@ def mapExons(records):
                                 if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
                                     i = feature_names[pos2]['GBQualifier_value']
 
-                            # print ('koin?')
-                            # print (i)
+                            print(i)
 
                             if 'join' in i:
+                                print('joint is here')
+                                print(i)
                                 exons = (i.split('join(')[1].split(','))
 
                                 for count, exon in enumerate(exons):
                                     exons[count] = exon.split('.1:')[1]
 
-                                strand = "minus" if "complement" in i else "plus"
+                            else:
+                                print('no join')
+                                print(i)
+                                exons = [i.split('.1:')[1]]
 
-                                # print ('The protein with ID %s has %d exons and thier locations are %s' % ( protein_id, len(exons), exons))
-                                # print ('And the lengths of the exons are %s' % (update_exon_lengths(exons)))
-                                # print ()
+                            print(exons)
 
-                                genomic_record = GenomicRecord(protein_id=protein_id, gene_id=gene_id, exons=exons,
-                                                               strand=strand, calc_introns=True)
-                                genomic_records[record.id] = genomic_record
+                            strand = "minus" if "complement" in i else "plus"
+
+                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
+                                                           strand=strand, calc_introns=True)
+                            genomic_records[record.id] = genomic_record
 
             if gene_id:
-                print('and i got here')
-                # These are the bits I removed but could add back
-                # handle = Entrez.efetch(db="protein", id=protein_id, rettype="gb", retmode="xml")
-                # full_record = Entrez.read(handle, validate=False)
-
-                # for term in full_record:
-                #     refseq = (term['GBSeq_source-db'].split("accession")[1].strip())
+                print('We could map the NCBI protein ID to a gene automatically')
+                print(gene_id)
 
                 # Use the gene ID to get the full gene record
                 handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
-
                 gene_record = Entrez.read(handle, validate=False)
-
-                print(gene_record)
 
                 # Get the genome ID, and the start and end location of the gene
                 for term in gene_record:
-                    print('here now')
                     i = term['Entrezgene_comments']
                     for pos in range(0, len(i)):
                         if 'Gene-commentary_comment' in i[pos].keys():
@@ -149,18 +116,13 @@ def mapExons(records):
                                     k = j[pos2]['Gene-commentary_products']
 
                                     for pos3 in range(0, len(k)):
-                                        if 'Gene-commentary_accession' in k[pos3].keys() and 'Gene-commentary_seqs' in \
+                                        if 'Gene-commentary_accession' in k[
+                                            pos3].keys() and 'Gene-commentary_seqs' in \
                                                 k[
                                                     pos3].keys() and 'Gene-commentary_heading' in k[pos3].keys():
 
-                                            if len(k) == 1 and 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
-                                                print('here')
-                                                print(k[pos3])
-
-                                                # print ('Equal one and in')
-
-                                                # print ('%s had a Primary Assembly labelled genome' % protein_id)
-
+                                            if len(k) == 1 and 'Primary Assembly' in \
+                                                    k[pos3]['Gene-commentary_heading']:
                                                 if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
                                                     genome_id = k[pos3]['Gene-commentary_accession']
                                                     seq_from = \
@@ -178,14 +140,8 @@ def mapExons(records):
                                                                        strand_string)
                                                     strand = result.group(1)
 
-                                            elif len(k) == 1 and 'Primary Assembly' not in k[pos3][
-                                                'Gene-commentary_heading']:
-
-                                                # print ('nope here')
-
-                                                # print ('Equal one and not in')
-
-                                                # print ('%s had a Primary Assembly labelled genome' % protein_id)
+                                            elif len(k) == 1 and 'Primary Assembly' not in \
+                                                    k[pos3]['Gene-commentary_heading']:
 
                                                 if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
                                                     genome_id = k[pos3]['Gene-commentary_accession']
@@ -203,11 +159,12 @@ def mapExons(records):
                                                     result = re.search('attributes={\'value\': \'(.*)\'}\)}',
                                                                        strand_string)
                                                     strand = result.group(1)
-                                            elif len(k) > 1 and 'Primary Assembly' in k[pos3][
-                                                'Gene-commentary_heading']:
+                                            elif len(k) > 1 and 'Primary Assembly' in \
+                                                    k[pos3]['Gene-commentary_heading']:
 
                                                 # print ('Greater than one and in')
-                                                # if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0] and 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
+                                                # if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0] and
+                                                # 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
                                                 if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
                                                     genome_id = k[pos3]['Gene-commentary_accession']
                                                     seq_from = \
@@ -225,11 +182,13 @@ def mapExons(records):
                                                                        strand_string)
                                                     strand = result.group(1)
 
-                    # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s " % (protein_id, gene_id, refseq))
+                    # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
+                    # % (search_id, gene_id, refseq))
                     print('searching on')
                     print(genome_id)
                     # print ()
-                    handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml", seq_start=seq_from,
+                    handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
+                                           seq_start=seq_from,
                                            seq_stop=seq_to)
 
                     genome_record = Entrez.read(handle, validate=False)
@@ -239,59 +198,100 @@ def mapExons(records):
                         feature_table = term['GBSeq_feature-table']
                         for pos in range(0, len(feature_table)):
 
-                            if 'GBFeature_key' in feature_table[pos].keys() and feature_table[pos][
-                                'GBFeature_key'] == 'CDS':
+                            if 'GBFeature_key' in feature_table[pos].keys() and \
+                                            feature_table[pos]['GBFeature_key'] == 'CDS':
                                 feature_names = feature_table[pos]['GBFeature_quals']
                                 for pos2 in range(0, len(feature_names)):
 
-                                    print(feature_names[pos2]['GBQualifier_value'])
+                                    # print(feature_names[pos2]['GBQualifier_value'])
                                     # Only pull the specific record we're searching for
                                     if feature_names[pos2]['GBQualifier_value'] == record.id:
-                                        print('here')
-                                        print(feature_names[pos2]['GBQualifier_name'])
-                                        print(feature_names[pos2]['GBQualifier_value'])
+                                        # print('here')
+                                        # print(feature_names[pos2]['GBQualifier_name'])
+                                        # print(feature_names[pos2]['GBQualifier_value'])
 
-                                        protein_id = feature_names[pos2]['GBQualifier_value']
+                                        search_id = feature_names[pos2]['GBQualifier_value']
 
                                         i = feature_table[pos]['GBFeature_location']
+
+                                        print(i)
                                         exons = (i.split('join(')[1].split(','))
                                         strand = "minus" if "complement" in i else "plus"
 
-                                        # print ('The protein with ID %s has %d exons and thier locations are %s' % ( protein_id, len(exons), exons))
+                                        # print ('The protein with ID %s has %d exons and thier locations are %s' %
+                                        # ( search_id, len(exons), exons))
                                         # print ('And the lengths of the exons are %s' % (update_exon_lengths(exons)))
                                         # print ()
 
-                                        # print (protein_id)
+                                        # print (search_id)
                                         # # print (gene_id)
                                         # print (strand)
 
-                                        print('exons are')
-                                        print(exons)
+                                        # print('exons are')
+                                        # print(exons)
 
-                                        genomic_record = GenomicRecord(protein_id=protein_id, gene_id=gene_id,
+                                        genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id,
                                                                        refseq="",
                                                                        genome_id=genome_id,
                                                                        genome_positions=[seq_from, seq_to],
-                                                                       exons=exons, strand=strand, calc_introns=True)
+                                                                       exons=exons, strand=strand,
+                                                                       calc_introns=True)
                                         # genomic_record.update_feature_lengths()
-
+                                        #
                                         print('stored exons are')
                                         print(genomic_record.exons)
-                                        print(genomic_record.exon_lengths)
+                                        # print(genomic_record.exon_lengths)
 
                                         genomic_records[record.id] = genomic_record
-                                        print('added')
-                                        print(genomic_records)
+                                        # print('added')
+                                        # print(genomic_records)
 
                                         # print('The genome ID is %s' % ( genome_id))
-                                        # print('The exons are %s and the exon lengths are %s' % (exons, genomic_record.exon_lengths))
+                                        # print('The exons are %s and the exon lengths are %s' %
+                                        # (exons, genomic_record.exon_lengths))
                                         #
                                         #
 
 
                                         # exon_records.append(exon_dict)
-        except Exception:
-            continue
+
+                                        # else:
+                                        #     print ("This is the gene id")
+                                        #     print (search_id)
+                                        #     # search_id = "KL657831.1"
+                                        #
+                                        #     handle = Entrez.efetch(db="nucleotide", id=search_id, rettype="gb",
+                                        # retmode="xml")
+                                        #     mapping = Entrez.read(handle, validate=False)
+                                        #     # print('This is the mapping')
+                                        #     # print(mapping)
+                                        #     # print(mapping[0].keys())
+                                        #     #
+                                        #     # for k, v in mapping[0].items():
+                                        #     #     print (k)
+                                        #     #     print (" ")
+                                        #     #     print (v)
+                                        #
+                                        #     coding_seq_count = 0
+                                        #
+                                        #
+                                        #
+                                        #     if "GBSeq_feature-table" in mapping[0].keys():
+                                        #         feature_table = mapping[0]["GBSeq_feature-table"]
+                                        #
+                                        #         for pos in range(0, len(feature_table)):
+                                        #             if feature_table[pos]["GBFeature_key"] == 'CDS':
+                                        #                 # print ('yep')
+                                        #                 feature_names = feature_table[pos]
+                                        #                 print ("HERES DA LOCATION")
+                                        #                 print (feature_names["GBFeature_location"])
+                                        #                 coding_seq_count +=1
+                                        #
+                                        #     if coding_seq_count > 1:
+                                        #         print ("**** WARNING **** Multiple coding sequences found")
+
+                                        # except Exception:
+                                        #     continue
     return genomic_records
 
 
@@ -300,7 +300,7 @@ def get_feature_counts(records):
     Takes an exon records dictionary and returns a dictionary with exon count as the key and a list of the speices that
     have that number exons as the value
 
-    :param exon_records: The dictionary containing all of the exon records
+    :param records: The dictionary containing all of the exon records
     :return: Dictionary with the exon counts as the key
     """
 
@@ -312,18 +312,17 @@ def get_feature_counts(records):
 
 
 def map_exon_count_to_tree(exons, tree):
-    print('done')
+    pass
 
 
-def appendTagToSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
-    exon_records = []
+def append_tag_to_seqs_given_exon_count(*numbers, exon_counts, full_record, outpath):
     outfile = []
 
     for count in numbers:
         if count in exon_counts:
-            for id in exon_counts[count]:
-                if id in full_record:
-                    full_record[id].id += "*TAG " + str(count) + "*"
+            for seq_id in exon_counts[count]:
+                if seq_id in full_record:
+                    full_record[seq_id].id += "*TAG " + str(count) + "*"
 
     for record in full_record.values():
         outfile.append(record)
@@ -331,71 +330,49 @@ def appendTagToSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
     fasta.write_fasta(outfile, outpath)
 
 
-def writeOutSeqsGivenExonCount(*numbers, exon_counts, full_record, outpath):
+def write_out_seqs_given_exon_count(*numbers, exon_counts, full_record, outpath):
     exon_records = []
     for count in numbers:
         exon_records += exon_counts[count]
 
-    print('lets write it out')
     outfile = fasta.map_list_to_records(exon_records, full_record)
 
     fasta.write_fasta(outfile, outpath)
 
 
-# records = mapExons(latest_2U1)
-# counts = get_feature_counts(records)
-# print (counts)
-# appendTagToSeqsGivenExonCount(3,4,5,6,7,8,9,11,12,15, exon_counts=counts, full_record=latest_2U1, outpath="results/exons/2U1_55percent_tagged.fasta" )
-#
-
-# writeOutSeqsGivenExonCount(4,5,6, exon_counts=counts, full_record=latest_2U1, outpath="results/exons/2U1_55_percent_456_exons.fasta")
-
-# for count, seqs in counts.items():
-#     print ("Count: %d " % (count))
-#     for seq in seqs:
-#         print ("The exon lengths are %s " % (records[seq].exon_lengths))
-#         print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s " % (records[seq].protein_id, records[seq].gene_id, records[seq].refseq))
-#         # print('The genome ID is %s and the gene region is from position %s to position %s ' % (records[seq].genome_id,
-#         #                                                                                records[seq].genome_positions[0],
-#         #                                                                                    records[seq].genome_positions[1]))
-#         print ('The exons are %s and the exon lengths are %s' % (records[seq].exons, records[seq].exon_lengths))
-
-# draw_genome()
-
-
-def saveGenomicRecords(records, filepath):
+def save_genomic_records(records, filepath):
     # If records is a dictionary convert it into a list of the records
     if type(records) == dict:
         records = [record for record in records.values()]
 
-    genomic_records = mapExons(records)
+    genomic_records = map_exons(records)
+
+    print(genomic_records)
     utilities.save_python_object(genomic_records, filepath)
 
 
-def openGenomicRecords(filepath):
+def open_genomic_records(filepath):
     genomic_records = utilities.open_python_object(filepath)
     return genomic_records
 
 
-def mapExonBoundariesToAlignment(records, genomic_records):
+def map_exon_boundaries_to_alignment(records, genomic_records):
     # If records is a dictionary convert it into a list of the records
     if type(records) == dict:
         records = [record for record in records.values()]
 
-    # exons = {'XP_019684690.2' : [178, 167, 161, 635, 489], 'XP_009883824.1' : [178, 167, 161, 705, 82], 'XP_014065111.1' : [181, 167, 161, 334, 318, 441] }
+    # exons = {'XP_019684690.2' : [178, 167, 161, 635, 489], 'XP_009883824.1' : [178, 167, 161, 705, 82],
+    # 'XP_014065111.1' : [181, 167, 161, 334, 318, 441] }
     # exons = {'XP_019684690.2' : [3, 3, 2, 1], 'XP_009883824.1' : [2, 2, 1], 'XP_014065111.1' : [4] }
     #
 
-
-    # genomic_records = mapExons(records)
-
-
+    # genomic_records = map_exons(records)
 
     cols = ["\033[1;35;4m", "\033[1;34;4m", "\033[1;32;4m", "\033[1;33;4m", "\033[1;37;4m", "\033[1;31;4m",
             "\033[1;39;4m"]
     longest_header = 0
     for record in records:
-        print (record.id)
+        # print (record.id)
         if len(record.id) > longest_header:
             longest_header = len(record.id)
 
@@ -408,19 +385,23 @@ def mapExonBoundariesToAlignment(records, genomic_records):
         # print (genomic_records[record].exon_lengths)
         # print (genomic_records[record].exons)
 
-        # skip_records = ['XP_010997363.1', 'XP_006162319.2', 'XP_005406339.2', 'XP_014050304.1'] # This was the skip records for 55% identity
-        # skip_records = ['XP_010997363.1', 'XP_021107396.1', 'XP_002607780.1', 'PIK57532.1', 'PIK38219.1', 'XP_002605102.1', 'XP_006825012.1', 'XP_014801266.1', 'XP_021107397.1', 'XP_006162319.2', 'PIO41157.1', 'XP_005406339.2', 'KYO44822.1', 'KTF79201.1', 'XP_014379039.1', 'XP_013865517.1',  'XP_006520454.1', 'ELW64418.1', 'XP_016094679.1', 'EPY81189.1', 'XP_016404253.1', 'XP_006768464.1', 'XP_013766542.1', 'XP_006123186.1', 'XP_014050304.1', 'ETE67196.1', 'KTF79021.1', 'OBS74422.1', 'XP_004671492.1', 'EMP40787.1', 'KFO25848.1','KKF09825.1'] # This was the skip records for 50% identity
+        # skip_records = ['XP_010997363.1', 'XP_006162319.2', 'XP_005406339.2', 'XP_014050304.1'] # This was the
+        # skip records for 55% identity
+        # skip_records = ['XP_010997363.1', 'XP_021107396.1', 'XP_002607780.1', 'PIK57532.1', 'PIK38219.1',
+        # 'XP_002605102.1', 'XP_006825012.1', 'XP_014801266.1', 'XP_021107397.1', 'XP_006162319.2', 'PIO41157.1',
+        # 'XP_005406339.2', 'KYO44822.1', 'KTF79201.1', 'XP_014379039.1', 'XP_013865517.1',  'XP_006520454.1',
+        # 'ELW64418.1', 'XP_016094679.1', 'EPY81189.1', 'XP_016404253.1', 'XP_006768464.1', 'XP_013766542.1',
+        # 'XP_006123186.1', 'XP_014050304.1', 'ETE67196.1', 'KTF79021.1', 'OBS74422.1', 'XP_004671492.1',
+        # 'EMP40787.1', 'KFO25848.1','KKF09825.1'] # This was the skip records for 50% identity
 
         # skip_records = ['XP_010224405.1', 'XP_014050304.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
         # skip_records = ['XP_010224405.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
-        # skip_records = []
+        skip_records = []
 
         # print (record.id)
         # print (genomic_records)
 
-
         if record.id in genomic_records and record.id not in skip_records:
-            print ('what')
 
             # print (genomic_records[record].exon_lengths)
             # print (genomic_records[record].strand)
@@ -435,7 +416,6 @@ def mapExonBoundariesToAlignment(records, genomic_records):
                 # print (count,int(math.ceil(exon/3)))
                 buildseq += str(count + 1) * int(math.ceil((exon / 3)))
 
-            print(record)
             # print (buildseq)
             # print (record.seq)
             print(record.id)
@@ -474,82 +454,3 @@ def mapExonBoundariesToAlignment(records, genomic_records):
 
             # else:
             # print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
-
-
-# records_4seqs = SeqIO.to_dict(SeqIO.parse(
-#     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_55_percent_4seqs.aln",
-#     "fasta"))
-#
-# latest_2U1 = SeqIO.to_dict(SeqIO.parse(
-#     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_latest.aln",
-#     "fasta"))
-#
-# new_2U1 = list(SeqIO.parse(
-#     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/2U1_latest.aln",
-#     "fasta"))
-#
-# # latest_2U1 = SeqIO.to_dict(SeqIO.parse(
-# #     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/problem.fasta",
-# #     "fasta"))
-#
-# latest_2U1_3seqs = SeqIO.to_dict(SeqIO.parse(
-#     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/test.aln",
-#     "fasta"))
-#
-# old_2U1 = list(SeqIO.parse("/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/files/2U 2R aligned.fasta", "fasta"))
-#
-# original_2U1 = list(SeqIO.parse("/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/files/raine_exons.fasta", "fasta"))
-#
-#
-# bug = list(SeqIO.parse("/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/files/bug.fasta", "fasta"))
-#
-#
-# leo = list(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Smaller Projects/Leo Errors/uniprot_single.fasta", "fasta"))
-
-
-
-# genome_mapping = list(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/2U1_55percent_tagged.aln",
-#     "fasta"))
-
-
-
-
-
-# filepath = 'problem.obj'
-
-
-# fifty_percent = SeqIO.to_dict(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/2U1_50_percent.fasta",
-#     "fasta"))
-
-# counts = get_feature_counts(genomic_records)
-# print (counts.keys())
-# appendTagToSeqsGivenExonCount(3,4,5,6,7,8,9,10,11,12,13,15, exon_counts=counts, full_record=fifty_percent, outpath="results/exons/2U1_50percent_tagged.fasta" )
-# writeOutSeqsGivenExonCount(3,4,5,6,7,8,9,10,11,12,13,15, exon_counts=counts, full_record=fifty_percent, outpath="results/exons/2U1_50_percent_tagged.fasta")
-
-# errors = list(SeqIO.parse("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Genome_mapping/errors.aln",
-#     "fasta"))
-#
-#
-# filepath = 'files/objects/errors.obj'
-#
-# saveGenomicRecords(errors, filepath)
-#
-# genomic_records = openGenomicRecords(filepath)
-#
-# for x in genomic_records:
-#     print (x)
-#
-# mapExonBoundariesToAlignment(errors, genomic_records)
-
-
-# Open the file
-
-# high_number_exons = utilities.load_sequences("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/high_number_exons.aln")
-# no_automatic_exons = utilities.load_sequences(
-#     "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Alignment_exclusion/no_automatic_exons.fasta")
-#
-# filepath = '../files/objects/no_automatic_exons.obj'
-# saveGenomicRecords(no_automatic_exons, filepath)
-#
-# genomic_records = openGenomicRecords(filepath)
-# mapExonBoundariesToAlignment(no_automatic_exons, genomic_records)

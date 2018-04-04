@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 from plotly.graph_objs import *
 plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
 
+
 def print_record_overview(records):
     """
     Print the total number of sequences and the average length of sequences
@@ -224,7 +225,7 @@ def plot_record_number(records, plot_type, min_length=0):
     # If we need to restrict the records to plot based on a minimum number
     if min_length > 0:
 
-        for k,v in records.items():
+        for k, v in records.items():
             if len(v) >= min_length:
                 plot_records[k] = v
     else:
@@ -345,16 +346,12 @@ def correct_phylip_tree(records_path, phylip_file_path, outpath):
     phylip_correction_dict["LIONS"] = "XP_021429049.1"
     phylip_correction_dict["CLAMS"] = "XP_018919738.1"
 
-
-
     for node in phylip_tree:
         print (node.name)
         if node.name in phylip_correction_dict:
             node.name = phylip_correction_dict[node.name]
 
     phylip_tree.write(outfile=outpath)
-
-
 
 
 def generate_phylip_correction_dictionary(records, outpath=""):

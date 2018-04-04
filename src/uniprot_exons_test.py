@@ -1,24 +1,14 @@
 import utilities
 import exons
 
-filepath = "../files/uniprot/exons_small.obj"
-uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_small.fasta", split_char="|")
+filepath = "../files/uniprot/exons_15.obj"
+# uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_small.fasta", split_char="|")
 
-# uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_large.fasta")
-
-for seq in uniprot_seqs.values():
-    print (seq.name)
-    print (seq.id)
-    print (" ")
+uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_15.fasta", split_char="|")
 
 print ("There are this many uniprot seqs in the original file - %d" % (len(uniprot_seqs)))
 
-exons.saveGenomicRecords(uniprot_seqs, filepath)
-genomic_records = exons.openGenomicRecords(filepath)
+exons.save_genomic_records(uniprot_seqs, filepath)
+genomic_records = exons.open_genomic_records(filepath)
 
-
-for record, value in genomic_records.items():
-    print (record)
-    print (value)
-
-exons.mapExonBoundariesToAlignment(uniprot_seqs, genomic_records)
+exons.map_exon_boundaries_to_alignment(uniprot_seqs, genomic_records)
