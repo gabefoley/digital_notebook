@@ -250,7 +250,6 @@ def plot_record_number(records, plot_type, min_length=0):
 def map_dict_to_records(records, full_dict={}, unique=False):
     # If full_dict hasn't been provided, take records as the full dictionary
     if not full_dict:
-        print('empty dict')
         full_dict = records
     out_records = []
     for record in records.values():

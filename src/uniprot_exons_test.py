@@ -1,10 +1,10 @@
 import utilities
 import exons
 
-filepath = "../files/uniprot/exons_15.obj"
+filepath = "../files/uniprot/exons_small.obj"
 # uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_small.fasta", split_char="|")
 
-uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_15.fasta", split_char="|")
+uniprot_seqs = utilities.load_sequences("../files/uniprot/uniprot_ncbi.fasta", split_char="|")
 
 print ("There are this many uniprot seqs in the original file - %d" % (len(uniprot_seqs)))
 

@@ -31,9 +31,12 @@ def load_sequences(*args, split_char=""):
                 if split_char in name:
                     full_dict[name].id = name.split(split_char)[0]
 
-        elif name.startswith(("pdb", "sp", "tr", "gi")):
+        elif name.startswith(( "sp", "tr", "gi")):
             full_dict[name].id = name.split("|")[1]
             full_dict[name].annotations["Database"] = "UniProt"
+
+        elif name.startswith(("pdb")):
+            full_dict[name].annotations["Database"] = "PDB"
 
         else:
             full_dict[name].annotations["Database"] = "Unknown"
@@ -88,7 +91,7 @@ def save_ids(*args, percent_identity="", output_dir="", concatenate=False):
         # If we're not concatenating lets write this out to the
         if not concatenate:
             # Remove any existing previous file at this location
-            remove_file(output_dir + outpath)
+            # remove_file(output_dir + outpath)
 
             # Write out the sequences to the output path
             get_ids(id_list, output_dir + outpath)
@@ -104,7 +107,6 @@ def load_ids(*args, percent_identity=""):
     id_list = []
 
     for file in args:
-
         # df = pd.read_csv(file, delimiter='\t', header=None)
         df = pd.read_csv(file, delimiter='\t', comment='#', names=["query acc.ver", "subject acc.ver", "% identity",
                                                                    "alignment length", "mismatches", "gap opens",
@@ -129,12 +131,13 @@ def get_ids(id_list, filepath=""):
     for i in range(0, len(id_list), 500):
 
         final = i + 500 if (i + 500 < len(id_list)) else len(id_list) + 1
-
         handle = Entrez.efetch(db="protein", rettype="fasta", retmode="text", id=id_list[i:final])
-
+        count = 0
         if filepath:
+            os.chdir(filepath.rsplit('/',1)[0] + "/")
             with open(filepath, "a") as outfile:
                 for seq_record in SeqIO.parse(handle, "fasta"):
+                    count+=1
                     outfile.write(">" + seq_record.description + "\n")
                     outfile.write(str(seq_record.seq + "\n"))
                 handle.close()
@@ -230,3 +233,5 @@ def open_python_object(filepath):
     file = open(filepath, 'rb')
     python_object = pickle.load(file)
     return python_object
+
+

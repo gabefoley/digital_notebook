@@ -1,7 +1,8 @@
 from Bio import SeqIO, Entrez
 
 
-handle = SeqIO.parse("/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/files/full.fasta", "fasta")
+# handle = SeqIO.parse("/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/files/full.fasta", "fasta")
+handle = SeqIO.parse("/Users/gabefoley/Dropbox/YenA2_psiblast_top100_seqdump.fasta", "fasta")
 
 species_set = set()
 species_list = []
