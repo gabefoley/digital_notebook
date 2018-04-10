@@ -13,13 +13,13 @@ def get_seqs_at_index(alignment, col_index, filter=None, return_gaps=True):
     :return: A list of sequences that display the particular presence or absence of a gap
     """
     seqs = []
-    print ('FILTER IS ', filter)
+    # print ('FILTER IS ', filter)
     total_seqs = [x for x in range(len(alignment))]
     if filter:
         check_seqs = filter
     else:
         check_seqs = [x for x in range(len(alignment))]
-    print ('check seqs is ', check_seqs)
+    # print ('check seqs is ', check_seqs)
     for align_index in check_seqs:
 
         # If this column isn't a gap add it to insertion_columns list
@@ -99,20 +99,22 @@ def get_indexes_of_deletions(alignment, accepted_percent, filter=None):
 
             col_deletions = (col.count("-"))
             if col_deletions > 0:
-                percent_deletions = col_deletions / (len(col))
+                percent_deletions = col_deletions  / (len(col) )
 
                 # Check if it meets the minimum percent deletion for a column and if the gap is present in one of the sequences we're filtering on
-                if 1 - percent_deletions <= accepted_percent:
+                # print (col)
+                # print ("percent_deletions ",  1 - percent_deletions)
+                # print ("accepted_percent ", accepted_percent)
+                if 1 - percent_deletions >= accepted_percent:
                     indexes.append(idx)
     return indexes
 
 
-def get_candidate_deletions(alignment, indexes, min_length, filter=None):
+def get_candidate_deletions(alignment, indexes, min_length, filter=None, internal_only=True):
     # print (indexes)
     candidates = {}
     positions = {}
     for i in range(len(indexes)):
-        # print (i)
         if i + min_length <= len(indexes):
             window = indexes[i:i + min_length]
             idx = 0
@@ -137,8 +139,8 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None):
 
                         # Get the list of alignments that have
                         insertion_cols = get_seqs_at_index(alignment, window[idx], filter)
-                        print ('idx is ', window[idx])
-                        print ("insertion cols", insertion_cols)
+                        # print ('idx is ', window[idx])
+                        # print ("insertion cols", insertion_cols)
 
                         if idx == 0:
                             prev_insertion_cols = intersection = insertion_cols
@@ -149,7 +151,7 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None):
                         if not intersection:
                             idx = len(window)
 
-                    print ('intersection', intersection)
+                    # print ('intersection', intersection)
                     idx += 1
 
 
@@ -157,6 +159,8 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None):
             # If we made it through the sliding window then it is a candidate insertion
             if idx  == len(window):
                 for seq in intersection:
+                    internal = True
+
                     candidate_index = 0
                     if (alignment[seq].name == "cat"):
                         print ("cat")
@@ -181,22 +185,31 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None):
                         candidates[alignment[seq].name][candidate_index].extend(first_region)
                         positions[alignment[seq].name].extend(first_region)
                         while first_index >= 0:
+                            # If we only want internal deletions, check that we haven't extended to the N-terminal
+                            if internal_only:
+                                if first_index == 0:
+                                    candidates[alignment[seq].name].pop(candidate_index)
+                                    internal = False
+                                    break
+
+
+
                             if alignment[seq][first_index - 1] == "-":
                                 candidates[alignment[seq].name][candidate_index].insert(0, first_index - 1)
                                 positions[alignment[seq].name].append(first_index - 1)
                                 first_index -= 1
                             else:
                                 break
-                    if last_index not in positions[alignment[seq].name]:
+                    if last_index not in positions[alignment[seq].name] and (not internal_only or internal):
                                 # candidates[alignment[seq].name].append([])
                                 if len(candidates[alignment[seq].name]) <= candidate_index:
                                     candidates[alignment[seq].name].append([])
                                 candidates[alignment[seq].name][candidate_index].append(last_index)
                                 positions[alignment[seq].name].append(last_index)
-                                print ("last index")
-                                print (last_index)
-                                print ("len alignment ")
-                                print (len(alignment[0]))
+                                # print ("last index")
+                                # print (last_index)
+                                # print ("len alignment ")
+                                # print (len(alignment[0]))
                                 while last_index + 1  < len(alignment[0]):
 
                                     # print ("alignment here is ", alignment[seq][last_index + 1])
@@ -215,30 +228,30 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None):
 
 
 
-        remove = {}
+    remove = {}
 
-        # Check for minimum length and minimum coverage
-        for seq, locations in candidates.items():
-            for index, location in enumerate(locations):
-                if (len(location) < min_length):
-                    remove[seq] = index
+    # Check for minimum length and minimum coverage
+    for seq, locations in candidates.items():
+        for index, location in enumerate(locations):
+            if (len(location) < min_length):
+                remove[seq] = index
 
-        for seq, pos in remove.items():
-            candidates[seq].pop(pos)
+    for seq, pos in remove.items():
+        candidates[seq].pop(pos)
 
-        # Check if this made any of the candidate lists empty
-        remove = [k for k in candidates if len(candidates[k]) == 0]
-        for k in remove: del candidates[k]
+    # Check if this made any of the candidate lists empty
+    remove = [k for k in candidates if len(candidates[k]) == 0]
+    for k in remove: del candidates[k]
 
-        print ('REMOVER', remove)
+    # print ('REMOVER', remove)
 
-       # remove_seq = [] for pos in candidates.values():
-       #      if (len(pos)) == 0:
+   # remove_seq = [] for pos in candidates.values():
+   #      if (len(pos)) == 0:
 
 
-        print(candidates)
+    # print(candidates)
 
-        return candidates
+    return candidates
 
 
 def get_seq_with_longest_deletion(candidate_deletions, final_check = True):
@@ -276,17 +289,17 @@ def get_seq_with_most_deletions(candidate_deletions, final_check=True):
     print ('checking for most deletions')
     nums = defaultdict(list)
     for seq, positions in candidate_deletions.items():
-        print(seq)
-        print(len(positions))
+        # print(seq)
+        # print(len(positions))
         max_num = len(positions)
         if not nums or max_num >= max(nums, key=int):
             nums[(max_num)].append(seq)
 
     if nums:
-        print (nums)
+        # print (nums)
         highest_num_candidates = nums[(max(nums, key=int))]
-        print (highest_num_candidates)
-        print (highest_num_candidates[0])
+        # print (highest_num_candidates)
+        # print (highest_num_candidates[0])
 
         if final_check or len(highest_num_candidates) == 1:
             return highest_num_candidates
@@ -315,30 +328,3 @@ def filter_alignment_by_deletion_length(alignment,length, internal_only=True):
             sequences.append(seq_index)
     return sequences
 
-alignment = utilities.load_alignment("../files/test/small_test.fasta", "fasta")
-
-
-# alignment = utilities.load_alignment("../files/test/large.aln", "fasta")
-alignment = utilities.load_alignment("../files/test/2U1_50_percent_motif.aln", "fasta")
-accepted_percent = 0.5
-min_length = 2
-internal_only = True
-
-print (alignment)
-
-
-filters = filter_alignment_by_deletion_length(alignment, min_length, internal_only)
-#
-print ("Filters are ", filters)
-#
-indexes = get_indexes_of_deletions(alignment, accepted_percent, filters)
-
-print ("Indexes are ", indexes)
-#
-candidate_deletions = get_candidate_deletions(alignment, indexes, min_length, filters)
-print ("Candidate deletions are ", candidate_deletions)
-#
-candidate_sequence = get_seq_with_longest_deletion(candidate_deletions)
-
-print ("The candidate sequence is")
-print(candidate_sequence)
