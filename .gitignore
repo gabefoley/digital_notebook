@@ -78,6 +78,11 @@ fabric.properties
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+
 # Remove previous ipynb_checkpoints
 #   git rm -r .ipynb_checkpoints/
 #
