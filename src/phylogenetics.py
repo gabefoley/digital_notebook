@@ -164,12 +164,11 @@ def check_robinson_foulds(tree1, tree2, tree1_name="tree1", tree2_name="tree2", 
         print("Partitions in %s that were not found in %s: %s" % (tree1_name, tree2_name, parts_t2 - parts_t1))
         print("\nPartitions in %s that were not found in %s: %s" % (tree2_name, tree1_name, parts_t1 - parts_t2))
 
+
 def get_robinson_foulds(tree1, tree2):
     rf = tree1.robinson_foulds(
         tree2, unrooted_trees=True)
     return rf[0]
-
-
 
 
 def get_species_to_rank_dict(tree, rank):
@@ -221,7 +220,8 @@ def get_rank_to_taxon_name(tree):
     return taxon_dict
 
 
-def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=False, print_duplicates=False, print_partitions=False, filepath_to_save_dict="",
+def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=False, print_duplicates=False,
+                                 print_partitions=False, filepath_to_save_dict="",
                                  filepath_to_load_dict="", outpath="", resultspath=""):
 
     tree = ete3.Tree(filepath, format=1)
@@ -292,17 +292,14 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
         # except:
         #     print ("Couldn't collapse this tree automatically")
 
-
-
         # Get a unique version of the collapsed rank tree (we won't be able to perform Robinson Foulds if it isn't)
 
-
         unique_collapsed_rank_tree = get_unique_tree(collapsed_rank_tree, rank, print_duplicates=print_duplicates)
-        unique_collapsed_ncbi_rank_tree = get_unique_tree(collapsed_ncbi_rank_tree, rank, print_duplicates=print_duplicates)
+        unique_collapsed_ncbi_rank_tree = get_unique_tree(collapsed_ncbi_rank_tree, rank,
+                                                          print_duplicates=print_duplicates)
         check_robinson_foulds(unique_collapsed_rank_tree, unique_collapsed_ncbi_rank_tree,
                               tree1_name="Supplied tree on basis of " + rank,
                               tree2_name="NCBI tree on basis of " + rank, print_partitions=print_partitions)
-
 
         # Create lineage dictionaries
         lineage_dict = get_rank_to_lineage_names(ncbi_tree)
@@ -325,10 +322,8 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
         if resultspath:
             rf = get_robinson_foulds(unique_collapsed_rank_tree, unique_collapsed_ncbi_rank_tree)
             path = filepath.split("/")[-1]
-            split_path = path.split("_")
 
             rf_dict[path].append(rf)
 
-
     for k, v in rf_dict.items():
-        print (k, v)
+        print(k, v)

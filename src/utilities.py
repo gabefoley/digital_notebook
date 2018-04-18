@@ -31,11 +31,11 @@ def load_sequences(*args, split_char=""):
                 if split_char in name:
                     full_dict[name].id = name.split(split_char)[0]
 
-        elif name.startswith(( "sp", "tr", "gi")):
+        elif name.startswith(("sp", "tr", "gi")):
             full_dict[name].id = name.split("|")[1]
             full_dict[name].annotations["Database"] = "UniProt"
 
-        elif name.startswith(("pdb")):
+        elif name.startswith("pdb"):
             full_dict[name].annotations["Database"] = "PDB"
 
         else:
@@ -53,6 +53,7 @@ def load_alignment(filepath, file_type="fasta"):
     handle = list(AlignIO.parse(filepath, file_type))
     alignment = handle[0]
     return alignment
+
 
 def load_tree(filepath, tree_format=1):
     tree = ete3.Tree(filepath, format=tree_format)
@@ -135,10 +136,10 @@ def get_ids(id_list, filepath=""):
         handle = Entrez.efetch(db="protein", rettype="fasta", retmode="text", id=id_list[i:final])
         count = 0
         if filepath:
-            os.chdir(filepath.rsplit('/',1)[0] + "/")
+            os.chdir(filepath.rsplit('/', 1)[0] + "/")
             with open(filepath, "a") as outfile:
                 for seq_record in SeqIO.parse(handle, "fasta"):
-                    count+=1
+                    count += 1
                     outfile.write(">" + seq_record.description + "\n")
                     outfile.write(str(seq_record.seq + "\n"))
                 handle.close()
@@ -234,5 +235,3 @@ def open_python_object(filepath):
     file = open(filepath, 'rb')
     python_object = pickle.load(file)
     return python_object
-
-

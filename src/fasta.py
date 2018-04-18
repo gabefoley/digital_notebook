@@ -1,8 +1,7 @@
-from Bio import SeqIO, Entrez
+from Bio import SeqIO
 from collections import defaultdict
 import plotly
 import utilities
-import re
 import plotly.plotly as py
 import plotly.graph_objs as go
 from plotly.graph_objs import *
@@ -47,6 +46,7 @@ def subset_records(*header_terms, records, length=0, mode="exclude", ignore_case
     :param records: The records to make a subset from
     :param length: The minimum length of sequences to keep
     :param mode: Whether to exclude or include on the presence of terms in the header
+    :param ignore_case: Whether we should ignore case of the header terms we're checking
     :return:
     """
     new_records = {}
@@ -58,7 +58,7 @@ def subset_records(*header_terms, records, length=0, mode="exclude", ignore_case
                 header_lower = [i.lower() for i in header_terms]
                 record_lower = record.description
                 record_lower = record_lower.lower()
-                if not any (term in record_lower for term in header_lower):
+                if not any(term in record_lower for term in header_lower):
                     new_records[record.name] = record
 
             elif len(str(record.seq)) > length and not any(term in record.description for term in header_terms):
@@ -69,7 +69,7 @@ def subset_records(*header_terms, records, length=0, mode="exclude", ignore_case
                 header_lower = [i.lower() for i in header_terms]
                 record_lower = record.description
                 record_lower = record_lower.lower()
-                if  any (term in record_lower for term in header_lower):
+                if any(term in record_lower for term in header_lower):
                     new_records[record.name] = record
             elif len(str(record.seq)) > length and any(term in record.description for term in header_terms):
                 new_records[record.name] = record
@@ -331,19 +331,19 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
     Subset a set of records based on the presence of a motif.
 
     :param motif: The motif to check for
-    :param exclude: Whether we should retain sequences with the motif or exclude them
+    :param retain_motif_seqs: Whether we should retain sequences with the motif or exclude them
     :return: The subseted records based on the presence of the motif
     """
-    subset_records = {}
+    subset_motifs = {}
 
     pattern=re.compile(motif)
 
     for record in records.values():
         if (len(pattern.findall(str(record.seq))) > 0 and retain_motif_seqs) or (len(pattern.findall(str(record.seq))) == 0 and not retain_motif_seqs):
-            subset_records[record.id] = record
+            subset_motifs[record.id] = record
 
+    return subset_motifs
 
-    return subset_records
 
 def correct_phylip_tree(records_path, phylip_file_path, outpath):
     """

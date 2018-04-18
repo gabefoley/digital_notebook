@@ -258,7 +258,7 @@ def get_seq_with_longest_deletion(candidate_deletions, final_check=True):
 
             # If the maximum length is longer or equal to the current longest, add it to the dictionary
             if not lengths or max_len >= max(lengths, key=int):
-                lengths[(max_len)].append(seq)
+                lengths[max_len].append(seq)
 
         print(lengths)
 
