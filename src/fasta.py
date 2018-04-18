@@ -2,6 +2,7 @@ from Bio import SeqIO, Entrez
 from collections import defaultdict
 import plotly
 import utilities
+import re
 import plotly.plotly as py
 import plotly.graph_objs as go
 from plotly.graph_objs import *
@@ -38,7 +39,7 @@ def build_species_count(*exclude_on, records, length=0):
     return species_count
 
 
-def subset_records(*header_terms, records, length=0, mode="exclude"):
+def subset_records(*header_terms, records, length=0, mode="exclude", ignore_case=True):
     """
     Return a subset of records, by defining terms that should or shouldn't be in the header and a minimum length
 
@@ -49,12 +50,28 @@ def subset_records(*header_terms, records, length=0, mode="exclude"):
     :return:
     """
     new_records = {}
+
     for record in records.values():
+
         if mode == "exclude":
-            if len(str(record.seq)) > length and not any(term in record.description for term in header_terms):
-                new_records[record.name] = record
+            if ignore_case and len(str(record.seq)) > length:
+                header_lower = [i.lower() for i in header_terms]
+                record_lower = record.description
+                record_lower = record_lower.lower()
+                if not any (term in record_lower for term in header_lower):
+                    new_records[record.name] = record
+
+            elif len(str(record.seq)) > length and not any(term in record.description for term in header_terms):
+                    new_records[record.name] = record
+
         elif mode == "include":
-            if len(str(record.seq)) > length and any(term in record.description for term in header_terms):
+            if ignore_case and len(str(record.seq)) > length:
+                header_lower = [i.lower() for i in header_terms]
+                record_lower = record.description
+                record_lower = record_lower.lower()
+                if  any (term in record_lower for term in header_lower):
+                    new_records[record.name] = record
+            elif len(str(record.seq)) > length and any(term in record.description for term in header_terms):
                 new_records[record.name] = record
 
     return new_records
@@ -215,7 +232,7 @@ def count_ids(records, min_length=0):
 def get_species_names(records, min_length=0, counts=False):
     species_names = []
     for k,v in records.items():
-        if len(v) > min_length:
+        if len(v) >= min_length:
             species_names.append(k) if not counts else species_names.append(k + " " + str(len(v)))
     return species_names
 
@@ -284,9 +301,11 @@ def write_fasta(records, filename):
 
 
 def compare_fasta(records1, records2):
+    compare_list = []
     for x in records1.keys():
         if x not in records2.keys():
-            print (x)
+            compare_list.append(x)
+    return compare_list
 
 
 def replace_words(changes, file):
@@ -318,15 +337,11 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
     subset_records = {}
 
     pattern=re.compile(motif)
-    count = 1
 
     for record in records.values():
         if (len(pattern.findall(str(record.seq))) > 0 and retain_motif_seqs) or (len(pattern.findall(str(record.seq))) == 0 and not retain_motif_seqs):
             subset_records[record.id] = record
-        else:
-            print(count)
-            print(record.id, pattern.findall(str(record.seq)))
-            count +=1
+
 
     return subset_records
 

@@ -1,12 +1,14 @@
-from Bio import AlignIO
 import utilities
+import fasta
+import alignment
+from Bio.Seq import Seq
 from collections import defaultdict
 
 
-def get_seqs_at_index(alignment, col_index, filter=None, return_gaps=True):
+def get_seqs_at_index(alignment_file, col_index, filter=None, return_gaps=True):
     """
     Given a column index get the sequences at that column that display a particular presence or absence of a gap
-    :param alignment: The alignment to check
+    :param alignment_file: The lignment_file to check
     :param col_index: The column indexes we're interested in
     :param filter: The list of sequences to only include
     :param return_gaps: Whether we should return sequences that have a gap here
@@ -14,16 +16,16 @@ def get_seqs_at_index(alignment, col_index, filter=None, return_gaps=True):
     """
     seqs = []
     # print ('FILTER IS ', filter)
-    total_seqs = [x for x in range(len(alignment))]
+    total_seqs = [x for x in range(len(alignment_file))]
     if filter:
         check_seqs = filter
     else:
-        check_seqs = [x for x in range(len(alignment))]
+        check_seqs = [x for x in range(len(alignment_file))]
     # print ('check seqs is ', check_seqs)
     for align_index in check_seqs:
 
         # If this column isn't a gap add it to insertion_columns list
-        if alignment[align_index].seq[col_index] == "-":  # Add in all the sequences with gaps
+        if alignment_file[align_index].seq[col_index] == "-":  # Add in all the sequences with gaps
             seqs.append(align_index)
         else:
             if align_index in seqs:
@@ -39,20 +41,20 @@ def check_sequential():
     pass
 
 
-def check_position(alignment, seq, index):
+def check_position(alignment_file, seq, index):
     pass
 
 
-# for alignment in handle:
+# for alignment_file in handle:
 #     for idx in indexes:
-#         for seq in alignment:
+#         for seq in alignment_file:
 #             print (seq.seq[idx])
 
 
-# def get_deletion_candidates(alignment, min_length=0, ignore_edges=True, rank=True, single=False):
+# def get_deletion_candidates(alignment_file, min_length=0, ignore_edges=True, rank=True, single=False):
 #     """
 #     Return a list of the candidates to be removed based on presence of deletion
-#     :param alignment: The alignment file to search
+#     :param alignment_file: The alignment file to search
 #     :param min_length: The minimum length of the deletion
 #     :param ignore_edges: Whether to ignore deletions occuring at the N or C terminus
 #     :param rank: Whether to rank sequences by most / longest deletions
@@ -61,7 +63,7 @@ def check_position(alignment, seq, index):
 #     """
 #     deletion = "-" * min_length
 #     print(deletion)
-#     for seq in alignment:
+#     for seq in alignment_file:
 #         if deletion in seq.seq:
 #             print('candidate')
 #             # Order sequences with multiple deletions of minimum length first
@@ -69,23 +71,24 @@ def check_position(alignment, seq, index):
 #             # Then order sequences by length of deletion
 
 
-def get_insertion_candidates(alignment, min_length=0, ignore_edges=True, rank=True, single=False, accepted_percent=0):
+def get_insertion_candidates(alignment_file, min_length=0, ignore_edges=True, rank=True, single=False, accepted_percent=0):
     """
     Return a list of the candidates to be removed based on presence of an insertion
-    :param alignment: The alignment file to search
+    :param alignment_file: The alignment file to search
     :param min_length: The minimum length of the insertion
     :param ignore_edges: Whether to ignore insertions occuring at the N or C terminus
     :param rank: Whether to rank sequences by most / longest insertions
     :param single: Whether to just pull a single candidate
-    :param accepted_percent: The accepted percent of other sequences having character state at the column of the insertion
+    :param accepted_percent: The accepted percent of other sequences having character state at the column of the
+    insertion
     :return: List of candidates / candidate to be removed base on presence of an insertion
     """
 
 
-def get_indexes_of_deletions(alignment, accepted_percent, filter=None):
+def get_indexes_of_deletions(alignment_file, accepted_percent, filter=None):
     indexes = []
-    for idx in range(len(alignment[0])):
-        col = alignment[:,idx]
+    for idx in range(len(alignment_file[0])):
+        col = alignment_file[:, idx]
 
         if filter:
 
@@ -99,18 +102,20 @@ def get_indexes_of_deletions(alignment, accepted_percent, filter=None):
 
             col_deletions = (col.count("-"))
             if col_deletions > 0:
-                percent_deletions = col_deletions  / (len(col) )
+                percent_deletions = (len(col) - col_deletions) / (len(col) - 1)
 
-                # Check if it meets the minimum percent deletion for a column and if the gap is present in one of the sequences we're filtering on
-                # print (col)
+                # Check if it meets the minimum percent deletion for a column and if the gap is present in one of the
+                # sequences we're filtering on
+                # print ("col ", col)
                 # print ("percent_deletions ",  1 - percent_deletions)
                 # print ("accepted_percent ", accepted_percent)
-                if 1 - percent_deletions >= accepted_percent:
+                # print (" ")
+                if 1 - percent_deletions <= accepted_percent:
                     indexes.append(idx)
     return indexes
 
 
-def get_candidate_deletions(alignment, indexes, min_length, filter=None, internal_only=True):
+def get_candidate_deletions(alignment_file, indexes, min_length, filter=None, internal_only=True):
     # print (indexes)
     candidates = {}
     positions = {}
@@ -123,12 +128,11 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None, interna
 
             # If the user just wants a window size of one
             if len(window) == 1:
-                insertion_cols = get_seqs_at_index(alignment, window[0], filter)
+                insertion_cols = get_seqs_at_index(alignment_file, window[0], filter)
                 intersection = [val for val in insertion_cols]
 
-
             else:
-                while idx + 1  <= len(window):
+                while idx + 1 <= len(window):
 
                     # print ("window[idx] + 1 = ", window[idx] + 1)
                     # print ("window[idx+1] = ", window[idx+1])
@@ -138,7 +142,7 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None, interna
                     else:
 
                         # Get the list of alignments that have
-                        insertion_cols = get_seqs_at_index(alignment, window[idx], filter)
+                        insertion_cols = get_seqs_at_index(alignment_file, window[idx], filter)
                         # print ('idx is ', window[idx])
                         # print ("insertion cols", insertion_cols)
 
@@ -154,86 +158,76 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None, interna
                     # print ('intersection', intersection)
                     idx += 1
 
-
             # idx = 0
             # If we made it through the sliding window then it is a candidate insertion
-            if idx  == len(window):
+            if idx == len(window):
                 for seq in intersection:
                     internal = True
-
                     candidate_index = 0
-                    if (alignment[seq].name == "cat"):
-                        print ("cat")
-                    ("Looking at seq ", alignment[seq].name)
-                    if alignment[seq].name not in candidates:
-                        candidates[alignment[seq].name] = []
-                        positions[alignment[seq].name] = []
+                    if alignment_file[seq].name not in candidates:
+                        candidates[alignment_file[seq].name] = []
+                        positions[alignment_file[seq].name] = []
                     else:
-                        candidate_index = len(candidates[alignment[seq].name])
-                    # candidates[alignment[seq].name][candidate_index].append(list(window))
+                        candidate_index = len(candidates[alignment_file[seq].name])
+                    # candidates[alignment_file[seq].name][candidate_index].append(list(window))
                     first_index = window[0]
                     last_index = window[-1]
 
                     block_filled = False
 
-                    if first_index not in positions[alignment[seq].name]:
-                        # candidates[alignment[seq].name].append([])
-                        if len(candidates[alignment[seq].name]) <= candidate_index:
-                            candidates[alignment[seq].name].append([])
+                    if first_index not in positions[alignment_file[seq].name]:
+                        # candidates[alignment_file[seq].name].append([])
+                        if len(candidates[alignment_file[seq].name]) <= candidate_index:
+                            candidates[alignment_file[seq].name].append([])
                         first_region = window[0:-1]
 
-                        candidates[alignment[seq].name][candidate_index].extend(first_region)
-                        positions[alignment[seq].name].extend(first_region)
+                        candidates[alignment_file[seq].name][candidate_index].extend(first_region)
+                        positions[alignment_file[seq].name].extend(first_region)
                         while first_index >= 0:
                             # If we only want internal deletions, check that we haven't extended to the N-terminal
                             if internal_only:
                                 if first_index == 0:
-                                    candidates[alignment[seq].name].pop(candidate_index)
+                                    candidates[alignment_file[seq].name].pop(candidate_index)
                                     internal = False
                                     break
 
-
-
-                            if alignment[seq][first_index - 1] == "-":
-                                candidates[alignment[seq].name][candidate_index].insert(0, first_index - 1)
-                                positions[alignment[seq].name].append(first_index - 1)
+                            if alignment_file[seq][first_index - 1] == "-":
+                                candidates[alignment_file[seq].name][candidate_index].insert(0, first_index - 1)
+                                positions[alignment_file[seq].name].append(first_index - 1)
                                 first_index -= 1
                             else:
                                 break
-                    if last_index not in positions[alignment[seq].name] and (not internal_only or internal):
-                                # candidates[alignment[seq].name].append([])
-                                if len(candidates[alignment[seq].name]) <= candidate_index:
-                                    candidates[alignment[seq].name].append([])
-                                candidates[alignment[seq].name][candidate_index].append(last_index)
-                                positions[alignment[seq].name].append(last_index)
-                                # print ("last index")
-                                # print (last_index)
-                                # print ("len alignment ")
-                                # print (len(alignment[0]))
-                                while last_index + 1  < len(alignment[0]):
+                    if last_index not in positions[alignment_file[seq].name] and (not internal_only or internal):
+                        # candidates[alignment_file[seq].name].append([])
+                        if len(candidates[alignment_file[seq].name]) <= candidate_index:
+                            candidates[alignment_file[seq].name].append([])
+                        candidates[alignment_file[seq].name][candidate_index].append(last_index)
+                        positions[alignment_file[seq].name].append(last_index)
+                        # print ("last index")
+                        # print (last_index)
+                        # print ("len alignment_file ")
+                        # print (len(alignment_file[0]))
+                        while last_index + 1 < len(alignment_file[0]):
 
-                                    # print ("alignment here is ", alignment[seq][last_index + 1])
-                                    if alignment[seq][last_index + 1] == "-":
-                                        candidates[alignment[seq].name][candidate_index].append(last_index + 1)
-                                        positions[alignment[seq].name].append(last_index + 1)
-                                        # print ('candidates is ', candidates)
-                                        last_index += 1
-                                    else:
-                                        break
-                                # if last_index + 1 == len(alignment[0]):
-                                #     if alignment[seq][last_index] == "-":
-                                #         candidates[alignment[seq].name][candidate_index].append(last_index + 1)
-                                #         positions[alignment[seq].name].append(last_index + 1)
-
-
-
+                            # print ("alignment_file here is ", alignment_file[seq][last_index + 1])
+                            if alignment_file[seq][last_index + 1] == "-":
+                                candidates[alignment_file[seq].name][candidate_index].append(last_index + 1)
+                                positions[alignment_file[seq].name].append(last_index + 1)
+                                # print ('candidates is ', candidates)
+                                last_index += 1
+                            else:
+                                break
+                                # if last_index + 1 == len(alignment_file[0]):
+                                #     if alignment_file[seq][last_index] == "-":
+                                #         candidates[alignment_file[seq].name][candidate_index].append(last_index + 1)
+                                #         positions[alignment_file[seq].name].append(last_index + 1)
 
     remove = {}
 
     # Check for minimum length and minimum coverage
     for seq, locations in candidates.items():
         for index, location in enumerate(locations):
-            if (len(location) < min_length):
+            if len(location) < min_length:
                 remove[seq] = index
 
     for seq, pos in remove.items():
@@ -241,25 +235,23 @@ def get_candidate_deletions(alignment, indexes, min_length, filter=None, interna
 
     # Check if this made any of the candidate lists empty
     remove = [k for k in candidates if len(candidates[k]) == 0]
-    for k in remove: del candidates[k]
+    for k in remove:
+        del candidates[k]
 
     # print ('REMOVER', remove)
 
-   # remove_seq = [] for pos in candidates.values():
-   #      if (len(pos)) == 0:
-
+    # remove_seq = [] for pos in candidates.values():
+    #      if (len(pos)) == 0:
 
     # print(candidates)
 
     return candidates
 
 
-def get_seq_with_longest_deletion(candidate_deletions, final_check = True):
-
+def get_seq_with_longest_deletion(candidate_deletions, final_check=True):
     lengths = defaultdict(list)
     if candidate_deletions:
         for seq, positions in candidate_deletions.items():
-
 
             # Get the maximum length of a deletion for a single sequence
             max_len = len(max(positions, key=len))
@@ -269,6 +261,7 @@ def get_seq_with_longest_deletion(candidate_deletions, final_check = True):
                 lengths[(max_len)].append(seq)
 
         print(lengths)
+
 
         if lengths:
             longest_candidates = lengths[(max(lengths, key=int))]
@@ -286,14 +279,14 @@ def get_seq_with_longest_deletion(candidate_deletions, final_check = True):
 
 
 def get_seq_with_most_deletions(candidate_deletions, final_check=True):
-    print ('checking for most deletions')
+    print('checking for most deletions')
     nums = defaultdict(list)
     for seq, positions in candidate_deletions.items():
         # print(seq)
         # print(len(positions))
         max_num = len(positions)
         if not nums or max_num >= max(nums, key=int):
-            nums[(max_num)].append(seq)
+            nums[max_num].append(seq)
 
     if nums:
         # print (nums)
@@ -309,22 +302,64 @@ def get_seq_with_most_deletions(candidate_deletions, final_check=True):
         return None
 
 
-def filter_alignment_by_deletion_length(alignment,length, internal_only=True):
+def filter_alignment_by_deletion_length(alignment_file, length, internal_only=True):
     """
     Filter an alignment so that we return a list of sequences that contain at least one deletion of the minimum length
-    :param alignment: The alignment to check
+    :param alignment_file: The alignment to check
     :param length: The minimum length
+    :param internal_only: Should we only check for internal deletions
     :return: A list of sequences that contain a deletion of minimum length
     """
     sequences = []
-    for seq_index in range(len(alignment)):
+    for seq_index in range(len(alignment_file)):
         if internal_only:
-            seq = alignment[seq_index].seq.strip("-")
+            seq = alignment_file[seq_index].seq.strip("-")
 
         else:
-            seq = alignment[seq_index]
+            seq = alignment_file[seq_index]
 
         if "-" * length in seq:
             sequences.append(seq_index)
     return sequences
+
+
+def automated_curation(alignment_path, accepted_percent, min_length,  internal_only=True, method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
+    alignment_file = utilities.load_alignment(alignment_path, "fasta")
+
+    filters = filter_alignment_by_deletion_length(alignment_file, min_length, internal_only)
+    indexes = get_indexes_of_deletions(alignment_file, accepted_percent, filters)
+    # print (indexes)
+    candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, filters, internal_only)
+    # print ("Candidate deletions are ", candidate_deletions)
+    #r
+    candidate_sequence = get_seq_with_longest_deletion(candidate_deletions, final_check=final_check)
+
+    print("The candidate sequence is")
+    print(candidate_sequence)
+    print ("Count is ", count + 1)
+    seqs = []
+
+    if candidate_sequence:
+        count +=1
+        for seq in alignment_file:
+            if seq.name not in candidate_sequence:
+                seq.seq = Seq(str(seq.seq).replace("-", ""))
+                seqs.append(seq)
+        filepath = outpath + str(count) + ".fasta"
+        alignment_filepath = filepath.replace(".fasta", ".aln")
+        fasta.write_fasta(seqs, filepath)
+        if alignment_method == "MAFFT":
+
+            new_alignment = alignment.align_with_mafft(filepath, localpair=True)
+            alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
+        automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
+    else:
+        alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
+        print ("We are finished")
+
+
+
+# automated_curation("../files/test/small_test.fasta", 0.2, 3, outpath="../files/test/small_test_output")
+# automated_curation("../files/test/2U1_50_percent_motif.aln", 0.1, 20, outpath="../files/test/new_2U1_test")
+# automated_curation("../files/test/2U1_automation_insertions_deleted.aln", 0.1, 20, outpath="../files/test/2U1_insertions")
 

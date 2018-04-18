@@ -3,13 +3,13 @@ from Bio import AlignIO
 import io
 
 
-def align_with_mafft(filepath):
+def align_with_mafft(filepath, localpair):
     """
     Align a file with the given filepath using MAFFT
     :param filepath: The file to align
     :return: The MAFFT alignment
     """
-    mafft_cline = MafftCommandline(input=filepath)
+    mafft_cline = MafftCommandline(input=filepath, localpair=localpair)
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
 

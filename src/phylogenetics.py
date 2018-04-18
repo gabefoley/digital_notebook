@@ -49,7 +49,7 @@ def create_taxon_tree_from_id(tree, taxonomy_dict, split_char=" "):
             leaf.name = taxonomy_dict[seq_id]
         elif seq_id != "XXXX" and seq_id[0:len(seq_id) - 3] != "XXXX":
             # If we've assigned a random string then remove it so that we can map back to the taxonomy dictionary
-            leaf.name = taxonomy_dict[seq_id[0:len(seq_id) - 3]] + utilities.randstring(3)
+            leaf.name = taxonomy_dict[seq_id[0:len(seq_id) - 3]] + utilities.random_string(3)
 
     return taxon_tree
 
@@ -130,7 +130,7 @@ def change_duplicate_leaves(tree):
     leaf_names = []
     for leaf in unique_tree.get_leaves():
         if leaf.name in leaf_names:
-            leaf.name = leaf.name + utilities.randstring(3)
+            leaf.name = leaf.name + utilities.random_string(3)
         else:
             leaf_names.append(leaf.name)
 
@@ -159,7 +159,7 @@ def get_unique_tree(tree, name, print_duplicates):
 def check_robinson_foulds(tree1, tree2, tree1_name="tree1", tree2_name="tree2", print_partitions=False):
     rf, max_rf, common_leaves, parts_t1, parts_t2, set1, set2 = tree1.robinson_foulds(
         tree2, unrooted_trees=True)
-    # print("\nRF distance between %s and %s is %s over a total of %s" % (tree1_name, tree2_name, rf, max_rf))
+    # print("\nRF distance between %s and %s is %s over a total of %s \n" % (tree1_name, tree2_name, rf, max_rf))
     if print_partitions:
         print("Partitions in %s that were not found in %s: %s" % (tree1_name, tree2_name, parts_t2 - parts_t1))
         print("\nPartitions in %s that were not found in %s: %s" % (tree2_name, tree1_name, parts_t1 - parts_t2))
@@ -227,6 +227,8 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
     tree = ete3.Tree(filepath, format=1)
     rf_dict = defaultdict(list)
 
+    # print (tree)
+
     # If user wants to load the taxonomy dictionary from file
     if filepath_to_load_dict:
         taxonomy_dict = utilities.open_python_object(filepath_to_load_dict)
@@ -283,7 +285,17 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
             print("\nThis is the collapsed NCBI tree based on %s \n" % rank)
             print(collapsed_ncbi_rank_tree)
 
+        # try:
+        #     check_robinson_foulds(collapsed_rank_tree, collapsed_ncbi_rank_tree,
+        #                           tree1_name="Supplied tree on basis of " + rank,
+        #                           tree2_name="NCBI tree on basis of " + rank, print_partitions=print_partitions)
+        # except:
+        #     print ("Couldn't collapse this tree automatically")
+
+
+
         # Get a unique version of the collapsed rank tree (we won't be able to perform Robinson Foulds if it isn't)
+
 
         unique_collapsed_rank_tree = get_unique_tree(collapsed_rank_tree, rank, print_duplicates=print_duplicates)
         unique_collapsed_ncbi_rank_tree = get_unique_tree(collapsed_ncbi_rank_tree, rank, print_duplicates=print_duplicates)
@@ -323,12 +335,17 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
 
 
 
-        # compare_tree_with_taxon_tree("order", filepath="/Users/gabefoley/Dropbox/PhD/Smaller Projects/GRASP tree/24.nwk",
-            # print_partitions=True, filepath_to_load_dict="../notebooks/files/24.obj",
-            # outpath="../notebooks/files/24again")
+# compare_tree_with_taxon_tree("order", "species", filepath="/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/7_shifted.nwk",
+#
+#             print_trees=True, print_partitions=True, filepath_to_load_dict="../notebooks/files/7.obj", outpath="/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/7files")
 
 # compare_tree_with_taxon_tree("order", "family", "species", "class",
             # filepath="/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and
             # bacteria/180312_fifty_percent_identity/Complete_sequences/2U1_complete_MAFFT_annotated_rerooted.nwk",
             # print_trees=False, filepath_to_load_dict="../notebooks/files/2U1_MAFFT.obj",
             # outpath="../notebooks/files/2U1_MAFFT_test")
+
+# tree = ete3.Tree("/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/4.nwk", format=1)
+# renamed = ete3.Tree("/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/4_renamed.nwk", format=1)
+#
+# check_robinson_foulds(tree, renamed)

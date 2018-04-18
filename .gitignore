@@ -2,7 +2,8 @@
 /results/*
 !files/.gitkeep 
 !results/.gitkeep 
-
+/notebooks/*
+!notebooks/.gitkeep
 .DS_Store
 
 

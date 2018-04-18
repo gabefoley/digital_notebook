@@ -48,7 +48,8 @@ def load_sequences(*args, split_char=""):
 
     return full_dict
 
-def load_alignment(filepath, file_type):
+
+def load_alignment(filepath, file_type="fasta"):
     handle = list(AlignIO.parse(filepath, file_type))
     alignment = handle[0]
     return alignment
