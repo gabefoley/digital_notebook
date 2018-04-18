@@ -7,12 +7,12 @@ def align_with_mafft(filepath, localpair):
     """
     Align a file with the given filepath using MAFFT
     :param filepath: The file to align
+    :param localpair: Should we use the l-insi method
     :return: The MAFFT alignment
     """
     mafft_cline = MafftCommandline(input=filepath, localpair=localpair)
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
-
     return align
 
 
