@@ -1,3 +1,5 @@
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/gabefoley/digital_notebook/master)
+
 # Digital notebook
 
 Digital notebook is a collection of Python scripts and associated Jupyter notebooks that are meant to help with tasks such as biological sequence curation, alignment, and phylogenetic tree building.
