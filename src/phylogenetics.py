@@ -332,20 +332,3 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
 
     for k, v in rf_dict.items():
         print (k, v)
-
-
-
-# compare_tree_with_taxon_tree("order", "species", filepath="/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/7_shifted.nwk",
-#
-#             print_trees=True, print_partitions=True, filepath_to_load_dict="../notebooks/files/7.obj", outpath="/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/7files")
-
-# compare_tree_with_taxon_tree("order", "family", "species", "class",
-            # filepath="/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and
-            # bacteria/180312_fifty_percent_identity/Complete_sequences/2U1_complete_MAFFT_annotated_rerooted.nwk",
-            # print_trees=False, filepath_to_load_dict="../notebooks/files/2U1_MAFFT.obj",
-            # outpath="../notebooks/files/2U1_MAFFT_test")
-
-# tree = ete3.Tree("/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/4.nwk", format=1)
-# renamed = ete3.Tree("/Users/gabefoley/Dropbox/PhD/Presentations/180413 - Group meetings/4_renamed.nwk", format=1)
-#
-# check_robinson_foulds(tree, renamed)

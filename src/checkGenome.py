@@ -3,8 +3,6 @@ from lxml import etree as et
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Graphics import GenomeDiagram
 from reportlab.lib.units import cm
-import utilities
-import fasta
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
@@ -131,9 +129,6 @@ def draw_genome(species, record_dict, visualise):
              start=0, end=max(locations))
     gdd.write(species + ".pdf", "pdf")
 
-# cyp2R1 = utilities.load_sequences("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Further_exclusions/April_2018/CYP2R1/Automated_alignment/CYP2R1_50_percent_identity_I_D_I_D_I_isoforms_exons_wo_callithrix_jacchus.fasta")
-#
-# cyp2U1 = utilities.load_sequences("/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Further_exclusions/April_2018/Final_Alignment/2U1_EGcurated_MAFFT_truncated_annotated.aln")
 def generate_multiple_hit_data(species_names, species_counts, full_record, file_path):
     id_dict = {}
     #     for name in species_names:
@@ -145,7 +140,3 @@ def generate_multiple_hit_data(species_names, species_counts, full_record, file_
 
     #     checkGenome.check_genomic_location(species_counts, min_length=2, file_path=file_path +" gene locations ")
     check_genomic_location(species_counts, min_length=2, visualise="linear")
-
-# species_counts = fasta.build_species_count(records=cyp2U1)
-# species_names = fasta.get_species_names(species_counts, min_length=2)
-# generate_multiple_hit_data(species_names, species_counts, cyp2U1, "files/multiple_hits/")

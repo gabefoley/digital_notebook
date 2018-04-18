@@ -40,6 +40,3 @@ def get_blast_info(xml_file):
                 break
     return blast_info
 
-
-# psi_blast("nr", "files/camelus_dromedarius.fasta", 0.00005, 5)
-# get_blast_info(open("files/psi.xml"))

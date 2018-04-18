@@ -408,22 +408,7 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
         # print (genomic_records[record].exon_lengths)
         # print (genomic_records[record].exons)
 
-        # filter_records = ['XP_010997363.1', 'XP_006162319.2', 'XP_005406339.2', 'XP_014050304.1'] # This was the
-        # skip records for 55% identity
-        # filter_records = ['XP_010997363.1', 'XP_021107396.1', 'XP_002607780.1', 'PIK57532.1', 'PIK38219.1',
-        # 'XP_002605102.1', 'XP_006825012.1', 'XP_014801266.1', 'XP_021107397.1', 'XP_006162319.2', 'PIO41157.1',
-        # 'XP_005406339.2', 'KYO44822.1', 'KTF79201.1', 'XP_014379039.1', 'XP_013865517.1',  'XP_006520454.1',
-        # 'ELW64418.1', 'XP_016094679.1', 'EPY81189.1', 'XP_016404253.1', 'XP_006768464.1', 'XP_013766542.1',
-        # 'XP_006123186.1', 'XP_014050304.1', 'ETE67196.1', 'KTF79021.1', 'OBS74422.1', 'XP_004671492.1',
-        # 'EMP40787.1', 'KFO25848.1','KKF09825.1'] # This was the skip records for 50% identity
 
-        # filter_records = ['XP_010224405.1', 'XP_014050304.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
-        # filter_records = ['XP_010224405.1', 'XP_006162319.2', 'XP_010997363.1', 'XP_005406339.2']
-        # filter_records = []
-
-        # print (record.id)
-        # print (genomic_records)
-        # print (filter_records)
 
 
         if record.id in genomic_records:

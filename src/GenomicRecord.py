@@ -2,13 +2,7 @@ from Bio import Entrez
 import re
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
-# homo_sapiens = SeqIO.to_dict(SeqIO.parse("files/exons/homo_sapiens.fasta", "fasta"))
-# strongylocentrotus_purpuratus = SeqIO.to_dict(SeqIO.parse("files/exons/strongylocentrotus_purpuratus.fasta", "fasta"))
-# all_seqs = SeqIO.to_dict(SeqIO.parse("files/exons/all.fasta", "fasta"))
-# agaricus_bisporus = SeqIO.to_dict(SeqIO.parse("files/exons/Agaricus_bisporus_stripped_removed.fasta", "fasta"))
-# filtered_2U1 = SeqIO.to_dict(SeqIO.parse("files/exons/2U1_filtered_records.fasta", "fasta"))
-# filtered_pruned_2U1 = SeqIO.to_dict(SeqIO.parse("files/exons/2U1_BLAST_filtered_records_X_removed_C_2.fasta",
-# "fasta"))
+
 
 
 class GenomicRecord(object):

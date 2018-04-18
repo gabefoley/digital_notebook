@@ -331,7 +331,6 @@ def automated_curation(alignment_path, accepted_percent, min_length,  internal_o
     # print (indexes)
     candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, filters, internal_only)
     # print ("Candidate deletions are ", candidate_deletions)
-    #r
     candidate_sequence = get_seq_with_longest_deletion(candidate_deletions, final_check=final_check)
 
     print("The candidate sequence is")
@@ -356,10 +355,3 @@ def automated_curation(alignment_path, accepted_percent, min_length,  internal_o
     else:
         alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
         print ("We are finished")
-
-
-
-# automated_curation("../files/test/small_test.fasta", 0.2, 3, outpath="../files/test/small_test_output")
-# automated_curation("../files/test/2U1_50_percent_motif.aln", 0.1, 20, outpath="../files/test/new_2U1_test")
-# automated_curation("../files/test/2U1_automation_insertions_deleted.aln", 0.1, 20, outpath="../files/test/2U1_insertions")
-
