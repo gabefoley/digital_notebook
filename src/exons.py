@@ -7,6 +7,7 @@ import math
 from urllib.request import urlopen
 import utilities
 from bs4 import BeautifulSoup as Soup
+from urllib.error import HTTPError
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
@@ -20,202 +21,216 @@ def map_exons(records):
     genomic_records = {}
 
     for record in records:
-        try:
-            search_id = record.id
-            protein_record = True
+        # try:
+        search_id = record.id
+        protein_record = True
 
-            # If it isn't an NCBI sequence, lets try and map it to the UniProt database
-            if record.annotations["Database"] != "NCBI":
+        # If it isn't an NCBI sequence, lets try and map it to the UniProt database
+        if record.annotations["Database"] != "NCBI":
+            print ('search id is ')
+            print (search_id)
+            try:
                 handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
                 soup = Soup(handle, "lxml")
                 search_id = soup.find('property', type="protein sequence ID")["value"]
+            except HTTPError as error:
+                print ("Couldn't access a Uniprot record for " + search_id)
 
-            if protein_record:
-                # Map the protein to a gene
-                handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id)
-                mapping = Entrez.read(handle, validate=False)
+        if protein_record:
+            # Map the protein to a gene
+            handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id)
+            mapping = Entrez.read(handle, validate=False)
 
-                print('This is the protein id')
+            print('This is the protein id')
+            print(search_id)
+
+            # print ('This is the mapping')
+            # print(mapping)
+
+            # Retrieve the gene ID
+            for term in mapping:
+                if term['LinkSetDb']:
+                    if term['LinkSetDb'][0]['Link'][0]['Id']:
+                        gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
+                else:
+                    gene_id = None
+                    break
+
+            if gene_id is None:
+                print("Couldn't map the NCBI protein ID to a gene automatically")
                 print(search_id)
+                handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
 
-                # print ('This is the mapping')
-                # print(mapping)
+                genome_record = Entrez.read(handle, validate=False)
+                # print (genome_record)
 
-                # Retrieve the gene ID
-                for term in mapping:
-                    if term['LinkSetDb']:
-                        if term['LinkSetDb'][0]['Link'][0]['Id']:
-                            gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
-                    else:
-                        gene_id = None
-                        break
+                for term in genome_record:
+                    feature_table = term['GBSeq_feature-table']
+                    # print (feature_table[0].keys())
+                    for pos in range(0, len(feature_table)):
+                        if 'GBFeature_key' in feature_table[pos].keys() and \
+                                        feature_table[pos]['GBFeature_key'] == 'CDS':
+                            # print (feature_table[pos])
+                            # i = feature_table[pos]['GBFeature_location']
+                            feature_names = feature_table[pos]['GBFeature_quals']
 
-                if gene_id is None:
-                    print("Couldn't map the NCBI protein ID to a gene automatically")
-                    print(search_id)
-                    handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
+                            print(feature_names)
+
+                            for pos2 in range(0, len(feature_names)):
+                                if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
+                                    i = feature_names[pos2]['GBQualifier_value']
+
+                            print(i)
+
+                            if 'join' in i:
+                                print('joint is here')
+                                print(i)
+                                exons = (i.split('join(')[1].split(','))
+
+                                for count, exon in enumerate(exons):
+                                    exons[count] = exon.split('.1:')[1]
+
+                            else:
+                                print('no join')
+                                print(i)
+                                exons = [i.split('.1:')[1]]
+
+                            print(exons)
+
+                            strand = "minus" if "complement" in i else "plus"
+
+                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
+                                                           strand=strand, calc_introns=True)
+                            genomic_records[record.id] = genomic_record
+
+            if gene_id:
+                print('We could map the NCBI protein ID to a gene automatically')
+                print(gene_id)
+
+                # Use the gene ID to get the full gene record
+                handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
+                gene_record = Entrez.read(handle, validate=False)
+
+                # Get the genome ID, and the start and end location of the gene
+                for term in gene_record:
+                    i = term['Entrezgene_comments']
+                    for pos in range(0, len(i)):
+                        if 'Gene-commentary_comment' in i[pos].keys():
+                            j = i[pos]['Gene-commentary_comment']
+                            for pos2 in range(0, len(j)):
+                                if 'Gene-commentary_products' in j[pos2].keys():
+                                    k = j[pos2]['Gene-commentary_products']
+
+                                    for pos3 in range(0, len(k)):
+                                        if 'Gene-commentary_accession' in k[
+                                            pos3].keys() and 'Gene-commentary_seqs' in \
+                                                k[
+                                                    pos3].keys() and 'Gene-commentary_heading' in k[pos3].keys():
+
+                                            if len(k) == 1 and 'Primary Assembly' in \
+                                                    k[pos3]['Gene-commentary_heading']:
+                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
+                                                    genome_id = k[pos3]['Gene-commentary_accession']
+                                                    seq_from = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_from']
+                                                    seq_to = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_to']
+                                                    strand_string = str(
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval']['Seq-interval_strand'])
+                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
+                                                                       strand_string)
+                                                    strand = result.group(1)
+
+                                            elif len(k) == 1 and 'Primary Assembly' not in \
+                                                    k[pos3]['Gene-commentary_heading']:
+
+                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
+                                                    genome_id = k[pos3]['Gene-commentary_accession']
+                                                    seq_from = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_from']
+                                                    seq_to = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_to']
+                                                    strand_string = str(
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval']['Seq-interval_strand'])
+                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
+                                                                       strand_string)
+                                                    strand = result.group(1)
+                                            elif len(k) > 1 and 'Primary Assembly' in \
+                                                    k[pos3]['Gene-commentary_heading']:
+
+                                                # print ('Greater than one and in')
+                                                # if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0] and
+                                                # 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
+                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
+                                                    genome_id = k[pos3]['Gene-commentary_accession']
+                                                    seq_from = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_from']
+                                                    seq_to = \
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval'][
+                                                            'Seq-interval_to']
+                                                    strand_string = str(
+                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
+                                                            'Seq-interval']['Seq-interval_strand'])
+                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
+                                                                       strand_string)
+                                                    strand = result.group(1)
+
+                    # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
+                    # % (search_id, gene_id, refseq))
+                    print('searching on')
+                    print(genome_id)
+                    # print ()
+                    handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
+                                           seq_start=seq_from,
+                                           seq_stop=seq_to)
 
                     genome_record = Entrez.read(handle, validate=False)
-                    # print (genome_record)
 
                     for term in genome_record:
+                        # print(term)
                         feature_table = term['GBSeq_feature-table']
-                        # print (feature_table[0].keys())
                         for pos in range(0, len(feature_table)):
+
                             if 'GBFeature_key' in feature_table[pos].keys() and \
                                             feature_table[pos]['GBFeature_key'] == 'CDS':
-                                # print (feature_table[pos])
-                                # i = feature_table[pos]['GBFeature_location']
                                 feature_names = feature_table[pos]['GBFeature_quals']
-
-                                print(feature_names)
-
+                                # print (feature_names)
                                 for pos2 in range(0, len(feature_names)):
-                                    if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
-                                        i = feature_names[pos2]['GBQualifier_value']
 
-                                print(i)
-
-                                if 'join' in i:
-                                    print('joint is here')
-                                    print(i)
-                                    exons = (i.split('join(')[1].split(','))
-
-                                    for count, exon in enumerate(exons):
-                                        exons[count] = exon.split('.1:')[1]
-
-                                else:
-                                    print('no join')
-                                    print(i)
-                                    exons = [i.split('.1:')[1]]
-
-                                print(exons)
-
-                                strand = "minus" if "complement" in i else "plus"
-
-                                genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
-                                                               strand=strand, calc_introns=True)
-                                genomic_records[record.id] = genomic_record
-
-                if gene_id:
-                    print('We could map the NCBI protein ID to a gene automatically')
-                    print(gene_id)
-
-                    # Use the gene ID to get the full gene record
-                    handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
-                    gene_record = Entrez.read(handle, validate=False)
-
-                    # Get the genome ID, and the start and end location of the gene
-                    for term in gene_record:
-                        i = term['Entrezgene_comments']
-                        for pos in range(0, len(i)):
-                            if 'Gene-commentary_comment' in i[pos].keys():
-                                j = i[pos]['Gene-commentary_comment']
-                                for pos2 in range(0, len(j)):
-                                    if 'Gene-commentary_products' in j[pos2].keys():
-                                        k = j[pos2]['Gene-commentary_products']
-
-                                        for pos3 in range(0, len(k)):
-                                            if 'Gene-commentary_accession' in k[
-                                                pos3].keys() and 'Gene-commentary_seqs' in \
-                                                    k[
-                                                        pos3].keys() and 'Gene-commentary_heading' in k[pos3].keys():
-
-                                                if len(k) == 1 and 'Primary Assembly' in \
-                                                        k[pos3]['Gene-commentary_heading']:
-                                                    if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                        genome_id = k[pos3]['Gene-commentary_accession']
-                                                        seq_from = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_from']
-                                                        seq_to = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_to']
-                                                        strand_string = str(
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval']['Seq-interval_strand'])
-                                                        result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                           strand_string)
-                                                        strand = result.group(1)
-
-                                                elif len(k) == 1 and 'Primary Assembly' not in \
-                                                        k[pos3]['Gene-commentary_heading']:
-
-                                                    if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                        genome_id = k[pos3]['Gene-commentary_accession']
-                                                        seq_from = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_from']
-                                                        seq_to = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_to']
-                                                        strand_string = str(
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval']['Seq-interval_strand'])
-                                                        result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                           strand_string)
-                                                        strand = result.group(1)
-                                                elif len(k) > 1 and 'Primary Assembly' in \
-                                                        k[pos3]['Gene-commentary_heading']:
-
-                                                    # print ('Greater than one and in')
-                                                    # if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0] and
-                                                    # 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
-                                                    if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                        genome_id = k[pos3]['Gene-commentary_accession']
-                                                        seq_from = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_from']
-                                                        seq_to = \
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval'][
-                                                                'Seq-interval_to']
-                                                        strand_string = str(
-                                                            k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                                'Seq-interval']['Seq-interval_strand'])
-                                                        result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                           strand_string)
-                                                        strand = result.group(1)
-
-                        # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
-                        # % (search_id, gene_id, refseq))
-                        print('searching on')
-                        print(genome_id)
-                        # print ()
-                        handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
-                                               seq_start=seq_from,
-                                               seq_stop=seq_to)
-
-                        genome_record = Entrez.read(handle, validate=False)
-
-                        for term in genome_record:
-                            print(term)
-                            feature_table = term['GBSeq_feature-table']
-                            for pos in range(0, len(feature_table)):
-
-                                if 'GBFeature_key' in feature_table[pos].keys() and \
-                                                feature_table[pos]['GBFeature_key'] == 'CDS':
-                                    feature_names = feature_table[pos]['GBFeature_quals']
-                                    for pos2 in range(0, len(feature_names)):
-
-                                        # print(feature_names[pos2]['GBQualifier_value'])
-                                        # Only pull the specific record we're searching for
-                                        if feature_names[pos2]['GBQualifier_value'] == record.id:
+                                    print("here is the name", feature_names[pos2]['GBQualifier_value'])
+                                    if ":" in feature_names[pos2]['GBQualifier_value']:
+                                        print (feature_names[pos2]['GBQualifier_value'].split(":")[1])
+                                        print (gene_id)
+                                    # Only pull the specific record we're searching for
+                                        if feature_names[pos2]['GBQualifier_value'].split(":")[1] == gene_id:
                                             # print('here')
                                             # print(feature_names[pos2]['GBQualifier_name'])
                                             # print(feature_names[pos2]['GBQualifier_value'])
+                                            print ("Here is the record id")
+                                            print (feature_names[pos2])
 
                                             search_id = feature_names[pos2]['GBQualifier_value']
 
                                             i = feature_table[pos]['GBFeature_location']
 
                                             print(i)
-                                            exons = (i.split('join(')[1].split(','))
+                                            if "," in i:
+                                                exons = (i.split('join(')[1].split(','))
+                                            else:
+                                                exons = i
                                             strand = "minus" if "complement" in i else "plus"
 
                                             # print ('The protein with ID %s has %d exons and thier locations are %s' %
@@ -290,8 +305,8 @@ def map_exons(records):
                                             #     if coding_seq_count > 1:
                                             #         print ("**** WARNING **** Multiple coding sequences found")
 
-        except Exception:
-            continue
+        # except Exception:
+        #     continue
     return genomic_records
 
 
