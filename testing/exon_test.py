@@ -13,7 +13,7 @@ gox = utilities.load_sequences(working_dir + "GOX_Full_88-seq.fasta", split_char
 # gox = utilities.load_sequences(working_dir + "gox_error.fasta", split_char="|")
 
 
-# aao = utilities.load_sequences(working_dir + "aao_small.fasta", split_char="|")
+# aao = utilities.load_sequences(working_dir + "aao_errors.fasta", split_char="|")
 
 # gox = utilities.load_sequences(working_dir +"gox_small.fasta", split_char="|")
 
@@ -30,23 +30,29 @@ fail_filepath = working_dir + "files/objects/fail.obj"
 
 # Save the files
 # exons.save_genomic_records(aao, aao_filepath)
-exons.save_genomic_records(gox, gox_filepath)
+# exons.save_genomic_records(gox, gox_filepath)
 # exons.save_genomic_records(fail, fail_filepath)
 
 # Open the file
-# aao_records = exons.open_genomic_records(aao_filepath)
-# print (len(aao_records))
+aao_records = exons.open_genomic_records(aao_filepath)
+print (len(aao_records))
 # # exons.map_exon_boundaries_to_alignment(cyp2U1_exons, genomic_records, filter_records=["XP_010997363.1", "XP_006162319.2", "XP_004671492.1", "XP_005406339.2"], exclude=True)
-# exons.print_exon_counts(aao, aao_records, exclude=True)
+exon_file = exons.get_exon_counts(aao, aao_records, exclude=True)
 
 # Open the file
-gox_records = exons.open_genomic_records(gox_filepath)
-print (gox_records)
+# gox_records = exons.open_genomic_records(gox_filepath)
+# print (gox_records)
 # exons.map_exon_boundaries_to_alignment(cyp2U1_exons, genomic_records, filter_records=["XP_010997363.1", "XP_006162319.2", "XP_004671492.1", "XP_005406339.2"], exclude=True)
-exons.print_exon_counts(gox, gox_records, exclude=True)
+# exons = exons.get_exon_counts(gox, gox_records, exclude=True)
 
 # Open the file
 # fail_records = exons.open_genomic_records(fail_filepath)
 # print (fail_records)
 # # exons.map_exon_boundaries_to_alignment(cyp2U1_exons, genomic_records, filter_records=["XP_010997363.1", "XP_006162319.2", "XP_004671492.1", "XP_005406339.2"], exclude=True)
-# exons.print_exon_counts(fail, fail_records, exclude=True)
+# exons.get_exon_counts(fail, fail_records, exclude=True)
+
+print (utilities.get_mean(exon_file))
+
+print (utilities.get_standard_deviation(exon_file))
+
+exons.write_exon_counts_to_csv(exon_file, working_dir + "files/test.csv")

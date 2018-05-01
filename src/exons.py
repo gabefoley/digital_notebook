@@ -8,6 +8,7 @@ from urllib.request import urlopen
 import utilities
 from bs4 import BeautifulSoup as Soup
 from urllib.error import HTTPError
+import csv
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
@@ -37,24 +38,41 @@ def map_exons(records):
                 print ("Couldn't access a Uniprot record for " + search_id)
 
         if protein_record:
+            print ('here in here')
+            print (search_id)
+            print (type(search_id))
             # Map the protein to a gene
-            handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id)
-            mapping = Entrez.read(handle, validate=False)
 
-            print('This is the protein id')
-            print(search_id)
+            handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id, rettype='xml')
+            print ('get da handle')
+            # print (handle)
+            # print (type(handle))
+            # print (handle.read())
+
+
+            try:
+                mapping = Entrez.read(handle, validate=False)
+            except:
+                mapping = None
+                gene_id = None
+
+            # print (mapping)
+
+            # print('This is the protein id')
+            # print(search_id)
 
             # print ('This is the mapping')
             # print(mapping)
 
             # Retrieve the gene ID
-            for term in mapping:
-                if term['LinkSetDb']:
-                    if term['LinkSetDb'][0]['Link'][0]['Id']:
-                        gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
-                else:
-                    gene_id = None
-                    break
+            if mapping:
+                for term in mapping:
+                    if term['LinkSetDb']:
+                        if term['LinkSetDb'][0]['Link'][0]['Id']:
+                            gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
+                    else:
+                        gene_id = None
+                        break
 
             if gene_id is None:
                 print("Couldn't map the NCBI protein ID to a gene automatically")
@@ -88,14 +106,17 @@ def map_exons(records):
                                 exons = (i.split('join(')[1].split(','))
 
                                 for count, exon in enumerate(exons):
-                                    exons[count] = exon.split('.1:')[1]
+                                    exons[count] = re.split("[.]\d:", exon)[1]
+
+
 
                             else:
                                 print('no join')
                                 print(i)
-                                exons = [i.split('.1:')[1]]
+                                exons = [re.split("[.]\d:", i)[1]]
 
-                            print(exons)
+
+                            print ('find me an exon', exons)
 
                             strand = "minus" if "complement" in i else "plus"
 
@@ -227,10 +248,13 @@ def map_exons(records):
                                             i = feature_table[pos]['GBFeature_location']
 
                                             print(i)
+                                            print ('where are my exons')
                                             if "," in i:
                                                 exons = (i.split('join(')[1].split(','))
                                             else:
-                                                exons = i
+                                                exons = [i.replace("complement(", "").replace(")", "")]
+
+                                            print ('here are the exons', exons)
                                             strand = "minus" if "complement" in i else "plus"
 
                                             # print ('The protein with ID %s has %d exons and thier locations are %s' %
@@ -371,7 +395,8 @@ def open_genomic_records(filepath):
     return genomic_records
 
 
-def print_exon_counts(records, genomic_records, filter_records=None, exclude=True):
+def get_exon_counts(records, genomic_records, filter_records=None, exclude=True):
+    exon_counts = {}
     if not filter_records:
         filter_records = []
 
@@ -381,13 +406,28 @@ def print_exon_counts(records, genomic_records, filter_records=None, exclude=Tru
     for record in records:
 
         if record.id in genomic_records:
-            print (record.id)
             if (exclude and record.id not in filter_records) or (not exclude and record.id in filter_records):
-                #
+                exon_counts[record.id] = len(genomic_records[record.id].exons)
+    return exon_counts
 
-                # print (genomic_records[record].exon_lengths)
-                # print (genomic_records[record].strand)
-                print( len(genomic_records[record.id].exons))
+
+def write_exon_counts_to_csv(records, filepath, totals=True):
+    with open(filepath, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=' ',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow("Hello| Goodby")
+        # csvwriter.writerow(['Sequence ID']['Exon Count'])
+        # for records, exons in records.items():
+        #     csvwriter.writerow([records][exons])
+        # if totals:
+        #     csvwriter.writerow["-"]["Total"]
+
+
+def write_exon_totals_to_csv(records, filepath):
+    with open(filepath, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=' ',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow("Hello| Goodby")
 
 
 def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=None, exclude=True):
@@ -483,3 +523,4 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
 
                 # else:
                 # print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
+

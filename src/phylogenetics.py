@@ -159,7 +159,7 @@ def get_unique_tree(tree, name, print_duplicates):
 def check_robinson_foulds(tree1, tree2, tree1_name="tree1", tree2_name="tree2", print_partitions=False):
     rf, max_rf, common_leaves, parts_t1, parts_t2, set1, set2 = tree1.robinson_foulds(
         tree2, unrooted_trees=True)
-    # print("\nRF distance between %s and %s is %s over a total of %s \n" % (tree1_name, tree2_name, rf, max_rf))
+    print("\nRF distance between %s and %s is %s over a total of %s \n" % (tree1_name, tree2_name, rf, max_rf))
     if print_partitions:
         print("Partitions in %s that were not found in %s: %s" % (tree1_name, tree2_name, parts_t2 - parts_t1))
         print("\nPartitions in %s that were not found in %s: %s" % (tree2_name, tree1_name, parts_t1 - parts_t2))
@@ -235,7 +235,7 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
 
     else:
         # If we don't already have a taxonomy dict, create one
-        taxonomy_dict = get_id_to_taxonomy_dict(tree)
+        taxonomy_dict = get_id_to_taxonomy_dict(tree, split_char=split_char)
 
     taxon_tree = create_taxon_tree_from_id(tree, taxonomy_dict, split_char=split_char)
 
@@ -327,3 +327,12 @@ def compare_tree_with_taxon_tree(*args, filepath, split_char=" ", print_trees=Fa
 
     for k, v in rf_dict.items():
         print(k, v)
+
+# import glob
+# working_dir = "/Users/gabefoley/Dropbox/PhD/Projects/2U1/2U1_2018/Excluding plants fungi nematodes insects and bacteria/180312_fifty_percent_identity/Further_exclusions/April_2018/CYP2U1_CYP2R1/Final trees and alignments/Annotated/To Compare"
+#
+# tree_files = glob.glob(working_dir + "/*.nwk")
+#
+# for path in tree_files:
+#     compare_tree_with_taxon_tree("Class", "Order", "Family", filepath=path, split_char="|", print_trees=False, print_duplicates=False, print_partitions=False, filepath_to_save_dict="", filepath_to_load_dict="", outpath="", resultspath="")
+#

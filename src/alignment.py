@@ -1,7 +1,7 @@
 from Bio.Align.Applications import MafftCommandline, ClustalOmegaCommandline
 from Bio import AlignIO
 import io
-
+import numpy
 
 def align_with_mafft(filepath, localpair):
     """
@@ -59,6 +59,11 @@ def get_percent_identity(seq1, seq2, count_gaps=False):
     :param count_gaps: Whether we should count a gap as a mismatch or no
     :return:
     """
+
+    # Make sure the sequence content is a string
+    seq1 = str(seq1)
+    seq2 = str(seq2)
+
     matches = sum(aa1 == aa2 for aa1, aa2 in zip(seq1, seq2))
 
     # Set the length based on whether we want identity to count gaps or not
@@ -67,3 +72,33 @@ def get_percent_identity(seq1, seq2, count_gaps=False):
     pct_identity = 100.0 * matches / length
 
     return pct_identity
+
+def get_percent_identity_of_alignment(records, realign=False, count_gaps=False):
+    """
+    Return a numpy array of all the pairwise percent identities in an alignment
+    :param records:
+    :param realign:
+    :param count_gaps:
+    :return:
+    """
+    count = 0
+    percent_identity = 0
+    percent_identities = []
+    for num, record in enumerate(records):
+        record = records[num]
+        for other_record in records[num:]:
+            if record.name != other_record.name:
+                print(record.name, other_record.name)
+                if realign:
+                    print ("Realigning sequences isn't implemented yet")
+
+                else:
+                    percent_identity += get_percent_identity(record.seq, other_record.seq, count_gaps)
+                    percent_identities.append(get_percent_identity(record.seq, other_record.seq, count_gaps))
+                    print("Percent identity of %s and %s is %d%%" % (
+                    record.name, other_record.name, get_percent_identity(record.seq, other_record.seq, count_gaps)))
+                    count += 1
+    percent_identities_array = numpy.array(percent_identities)
+    return percent_identities_array
+
+

@@ -5,6 +5,7 @@ import random
 import os
 import pickle
 import ete3
+import numpy
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
@@ -181,6 +182,7 @@ def build_taxonomy_dict(seq_ids, seq_type="protein"):
     taxonomy_dict = {}
 
     for seq_id in seq_ids:
+        print (seq_id)
         handle = Entrez.elink(dbfrom=seq_type, db="taxonomy", id=seq_id)
         records = Entrez.read(handle)
         if len(records[0]["LinkSetDb"]) > 0:
@@ -235,3 +237,23 @@ def open_python_object(filepath):
     file = open(filepath, 'rb')
     python_object = pickle.load(file)
     return python_object
+
+def get_mean(records):
+    """
+    Take a list or dictionary of values and return the mean
+    :param records:
+    :return:
+    """
+    if type(records) == dict:
+        print ('dict')
+        records_array = numpy.array([value for value in records.values()])
+        print (records_array)
+        print (records_array.mean())
+
+
+def get_standard_deviation(records):
+    """ Take a list or dictionary of values and return the standard deviation"""
+    if type(records) == dict:
+        records_array = numpy.array([value for value in records.values()])
+        print (records_array)
+        print (records_array.std())
