@@ -101,4 +101,3 @@ def get_percent_identity_of_alignment(records, realign=False, count_gaps=False):
     percent_identities_array = numpy.array(percent_identities)
     return percent_identities_array
 
-

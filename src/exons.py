@@ -130,10 +130,14 @@ def map_exons(records):
 
                 # Use the gene ID to get the full gene record
                 handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
-                gene_record = Entrez.read(handle, validate=False)
+                # print (handle.read())
+                # gene_record = Entrez.read(handle, validate=False)
+                soup = Soup(handle, "lxml")
+                search_id = soup.find('property', type="protein sequence ID")["value"]
+
 
                 # Get the genome ID, and the start and end location of the gene
-                for term in gene_record:
+                for term in soup:
                     i = term['Entrezgene_comments']
                     for pos in range(0, len(i)):
                         if 'Gene-commentary_comment' in i[pos].keys():
