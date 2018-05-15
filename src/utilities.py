@@ -55,6 +55,8 @@ def load_alignment(filepath, file_type="fasta"):
     alignment = handle[0]
     return alignment
 
+def write_alignment(alignment, filepath, file_type="fasta"):
+    AlignIO.write(alignment, filepath, file_type)
 
 def load_tree(filepath, tree_format=1):
     tree = ete3.Tree(filepath, format=tree_format)

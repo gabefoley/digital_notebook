@@ -1,0 +1,16 @@
+#NEXUS
+begin taxa;
+	dimensions ntax=6;
+	taxlabels
+	A
+	B
+	C
+	D
+	E
+	F
+;
+end;
+
+begin trees;
+	tree tree_1 = [&R] (((A:0.1,B:0.2):0.2,C:0.1):0.2,(D:0.3,(E[&!color=#d1411d]:0.2,F[&!color=#d1411d]:0.1)[&!color=#d1411d]:0.4):0.3);
+end;

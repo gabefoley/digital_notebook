@@ -64,10 +64,17 @@ def get_percent_identity(seq1, seq2, count_gaps=False):
     seq1 = str(seq1)
     seq2 = str(seq2)
 
-    matches = sum(aa1 == aa2 for aa1, aa2 in zip(seq1, seq2))
+    matches = sum(aa1 == aa2 for aa1, aa2 in zip(seq1, seq2) if aa1 != "-" and aa2 != "-")
 
     # Set the length based on whether we want identity to count gaps or not
-    length = len(seq1) if count_gaps else min(len(seq1.replace("-", "")), len(seq2.replace("-", "")))
+    # length = len(seq1) if count_gaps else min(len(seq1.replace("-", ""))- seq2.count("-"), len(seq2.replace("-", "")) - seq1.count("-"))
+    if count_gaps:
+        length = len(seq1)
+    else:
+        length = sum ([1 for (aa1, aa2) in zip(seq1, seq2) if aa1 != "-" and aa2 != "-"])
+
+    # print ('matches ', matches)
+    # print ('lenght ', length)
 
     pct_identity = 100.0 * matches / length
 
@@ -88,16 +95,17 @@ def get_percent_identity_of_alignment(records, realign=False, count_gaps=False):
         record = records[num]
         for other_record in records[num:]:
             if record.name != other_record.name:
-                print(record.name, other_record.name)
+                # print(record.name, other_record.name)
                 if realign:
                     print ("Realigning sequences isn't implemented yet")
 
                 else:
-                    percent_identity += get_percent_identity(record.seq, other_record.seq, count_gaps)
+                    # percent_identity += get_percent_identity(record.seq, other_record.seq, count_gaps)
                     percent_identities.append(get_percent_identity(record.seq, other_record.seq, count_gaps))
-                    print("Percent identity of %s and %s is %d%%" % (
-                    record.name, other_record.name, get_percent_identity(record.seq, other_record.seq, count_gaps)))
+                    # print("Percent identity of %s and %s is %d%%" % (
+                    # record.name, other_record.name, get_percent_identity(record.seq, other_record.seq, count_gaps)))
                     count += 1
+
     percent_identities_array = numpy.array(percent_identities)
     return percent_identities_array
 

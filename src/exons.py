@@ -26,316 +26,244 @@ def map_exons(records):
         search_id = record.id
         protein_record = True
 
+        print('Search id is ')
+        print(search_id)
+
         # If it isn't an NCBI sequence, lets try and map it to the UniProt database
         if record.annotations["Database"] != "NCBI":
-            print ('search id is ')
-            print (search_id)
+
             try:
                 handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
                 soup = Soup(handle, "lxml")
                 search_id = soup.find('property', type="protein sequence ID")["value"]
+
             except HTTPError as error:
+                pass
                 print ("Couldn't access a Uniprot record for " + search_id)
 
         if protein_record:
-            print ('here in here')
-            print (search_id)
-            print (type(search_id))
-            # Map the protein to a gene
+            # print ('Here is the NCBI id')
+            # print (search_id)
 
-            handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id, rettype='xml')
-            print ('get da handle')
-            # print (handle)
-            # print (type(handle))
-            # print (handle.read())
+            # Check if this is an ID that maps to the Ensembel Fungi Genome database
+            if (search_id[:4] == "FOXG"):
+                handle = urlopen("http://www.ensemblgenomes.org/id/" + search_id)
+                soup = Soup(handle, "lxml")
 
+                transcript_info = soup.find('div', attrs={'class': 'lhs'}, text="About this transcript")
 
-            try:
-                mapping = Entrez.read(handle, validate=False)
-            except:
-                mapping = None
-                gene_id = None
+                for sibling in transcript_info.next_siblings:
+                    if sibling != "\n":
+                        exon_num = int(sibling.text.split("This transcript has ")[1].split(" ")[0])
 
-            # print (mapping)
+                exons = []
 
-            # print('This is the protein id')
-            # print(search_id)
+                for i in range(0, exon_num):
+                    exons.append("id.1:1..1")
 
-            # print ('This is the mapping')
-            # print(mapping)
+                # print (exons)
 
-            # Retrieve the gene ID
-            if mapping:
-                for term in mapping:
-                    if term['LinkSetDb']:
-                        if term['LinkSetDb'][0]['Link'][0]['Id']:
-                            gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
-                    else:
-                        gene_id = None
-                        break
+                for count, exon in enumerate(exons):
+                    exons[count] = re.split("[.]\d:", exon)[1]
 
-            if gene_id is None:
-                print("Couldn't map the NCBI protein ID to a gene automatically")
-                print(search_id)
+                strand = "plus"
+
+                genomic_record = GenomicRecord(protein_id=search_id, gene_id="", exons=exons,
+                                               strand=strand, calc_introns=False)
+
+                # print ("Exon count is", genomic_record.exon_count)
+                genomic_records[record.id] = genomic_record
+
+            else:
                 handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
+                soup = Soup(handle, "lxml")
+                coded_by = soup.find("gbqualifier_name", text="coded_by")
 
-                genome_record = Entrez.read(handle, validate=False)
-                # print (genome_record)
+                for sibling in coded_by.next_siblings:
+                    if sibling != "\n":
+                        exon_text = sibling.text
+                        # print (exon_text)
 
-                for term in genome_record:
-                    feature_table = term['GBSeq_feature-table']
-                    # print (feature_table[0].keys())
-                    for pos in range(0, len(feature_table)):
-                        if 'GBFeature_key' in feature_table[pos].keys() and \
-                                        feature_table[pos]['GBFeature_key'] == 'CDS':
-                            # print (feature_table[pos])
-                            # i = feature_table[pos]['GBFeature_location']
-                            feature_names = feature_table[pos]['GBFeature_quals']
+                # Check that the record isn't coded by mRNA
+                if exon_text[0:2] != "XM":
 
-                            print(feature_names)
+                    if 'join' in exon_text:
+                        exons = (exon_text.split('join(')[1].split(','))
 
-                            for pos2 in range(0, len(feature_names)):
-                                if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
-                                    i = feature_names[pos2]['GBQualifier_value']
+                        for count, exon in enumerate(exons):
+                            exons[count] = re.split("[.]\d:", exon)[1]
 
-                            print(i)
 
-                            if 'join' in i:
-                                print('joint is here')
-                                print(i)
-                                exons = (i.split('join(')[1].split(','))
 
-                                for count, exon in enumerate(exons):
-                                    exons[count] = re.split("[.]\d:", exon)[1]
+                    else:
+                        exons = [re.split("[.]\d:", exon_text)[1]]
+
+                    strand = "minus" if "complement" in exon_text else "plus"
+
+                    genomic_record = GenomicRecord(protein_id=search_id, gene_id="", exons=exons,
+                                                   strand=strand, calc_introns=True)
+
+                    print("Exon count is", genomic_record.exon_count)
+
+                    genomic_records[record.id] = genomic_record
+
+                # The record was coded by mRNA, so we need to try and map the Protein record to a Gene
+                else:
+
+            #     # Map the protein to a gene
+            #
+                    handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id, rettype='xml')
+                    print ('This was an mRNA record')
+
+                    try:
+                        mapping = Entrez.read(handle, validate=False)
+                    except:
+                        mapping = None
+                        gene_id = None
+
+                    # Retrieve the gene ID
+                    if mapping:
+                        for term in mapping:
+                            if term['LinkSetDb']:
+                                if term['LinkSetDb'][0]['Link'][0]['Id']:
+                                    gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
+                            else:
+                                gene_id = None
+                                break
+
+                    if gene_id is None:
+                        print("Couldn't map the NCBI protein ID to a gene automatically")
+                        print(search_id)
+                        handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
+
+                        genome_record = Entrez.read(handle, validate=False)
+                        # print (genome_record)
+
+                        for term in genome_record:
+                            feature_table = term['GBSeq_feature-table']
+                            # print (feature_table[0].keys())
+                            for pos in range(0, len(feature_table)):
+                                if 'GBFeature_key' in feature_table[pos].keys() and \
+                                                feature_table[pos]['GBFeature_key'] == 'CDS':
+                                    # print (feature_table[pos])
+                                    # i = feature_table[pos]['GBFeature_location']
+                                    feature_names = feature_table[pos]['GBFeature_quals']
+
+                                    print(feature_names)
+
+                                    for pos2 in range(0, len(feature_names)):
+                                        if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
+                                            i = feature_names[pos2]['GBQualifier_value']
+
+                                    print(i)
+
+                                    if 'join' in i:
+                                        print('joint is here')
+                                        print(i)
+                                        exons = (i.split('join(')[1].split(','))
+
+                                        for count, exon in enumerate(exons):
+                                            exons[count] = re.split("[.]\d:", exon)[1]
+
+
+
+                                    else:
+                                        print('no join')
+                                        print(i)
+                                        exons = [re.split("[.]\d:", i)[1]]
+
+
+                                    print ('find me an exon', exons)
+
+                                    strand = "minus" if "complement" in i else "plus"
+
+                                    genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
+                                                                   strand=strand, calc_introns=True)
+                                    genomic_records[record.id] = genomic_record
+
+                    if gene_id:
+                        # print('We could map the NCBI protein ID to a gene automatically')
+                        # print(gene_id)
+
+                        # Use the gene ID to get the full gene record
+                        handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
+                        # print (handle.read())
+                        # gene_record = Entrez.read(handle, validate=False)
+                        # print (gene_record)
+                        soup = Soup(handle, "lxml")
+                        # print (soup.prettify())
+                        seq_from = soup.find("seq-interval_from")
+
+                        seq_to = soup.find("seq-interval_to")
+                        genome_id_list = soup.find_all('gene-commentary_accession')
+
+                        for id in genome_id_list:
+                            id_text = id.getText()
+                            # print (id_text)
+                            if id_text[0:2] == 'NW':
+                                genome_id = id_text
+
+
+                        # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
+                        # % (search_id, gene_id, refseq))
+                        # print('searching on')
+                        # print(genome_id)
+                        # print ()
+
+                        if (genome_id):
+                            handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
+                                                   seq_start=seq_from,
+                                                   seq_stop=seq_to)
+                            soup = Soup(handle, "lxml")
+                            # print(soup.prettify())
+                            # print (gene_id)
+                            gb_features = soup.find_all('gbfeature_key', text="CDS")
+
+                            for feature in gb_features:
+                                # print (feature)
+                                for qualifier in feature.find_all_next('gbqualifier_value'):
+                                    gene_check = qualifier.getText().split(":")
+                                    if gene_check[0] == "GeneID" and gene_check[1] == gene_id:
+                                        # print ('found it')
+                                        for location in feature.find_all_next('gbfeature_location'):
+                                            exon_location = (location.getText())
+
+                            if 'join' in exon_location:
+                                # print('joint is here')
+                                # print (exon_location)
+                                exons = (exon_location.split('join(')[1].split(','))
+
+                                # print (exons)
+
+                                # for count, exon in enumerate(exons):
+                                #     exons[count] = re.split("[.]\d:", exon)[1]
 
 
 
                             else:
-                                print('no join')
-                                print(i)
-                                exons = [re.split("[.]\d:", i)[1]]
+                                # print('no join')
+                                # print(exon_location)
+                                exons = [re.split("[.]\d:", exon_location)[1]]
 
+                            # print('find me an exon', exons)
 
-                            print ('find me an exon', exons)
+                            strand = "minus" if "complement" in exon_location else "plus"
 
-                            strand = "minus" if "complement" in i else "plus"
-
-                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
+                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id,
+                                                           exons=exons,
                                                            strand=strand, calc_introns=True)
+
+                            print ("Exon count is ", genomic_record.exon_count)
                             genomic_records[record.id] = genomic_record
 
-            if gene_id:
-                print('We could map the NCBI protein ID to a gene automatically')
-                print(gene_id)
-
-                # Use the gene ID to get the full gene record
-                handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
-                # print (handle.read())
-                # gene_record = Entrez.read(handle, validate=False)
-                soup = Soup(handle, "lxml")
-                search_id = soup.find('property', type="protein sequence ID")["value"]
 
 
-                # Get the genome ID, and the start and end location of the gene
-                for term in soup:
-                    i = term['Entrezgene_comments']
-                    for pos in range(0, len(i)):
-                        if 'Gene-commentary_comment' in i[pos].keys():
-                            j = i[pos]['Gene-commentary_comment']
-                            for pos2 in range(0, len(j)):
-                                if 'Gene-commentary_products' in j[pos2].keys():
-                                    k = j[pos2]['Gene-commentary_products']
 
-                                    for pos3 in range(0, len(k)):
-                                        if 'Gene-commentary_accession' in k[
-                                            pos3].keys() and 'Gene-commentary_seqs' in \
-                                                k[
-                                                    pos3].keys() and 'Gene-commentary_heading' in k[pos3].keys():
-
-                                            if len(k) == 1 and 'Primary Assembly' in \
-                                                    k[pos3]['Gene-commentary_heading']:
-                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                    genome_id = k[pos3]['Gene-commentary_accession']
-                                                    seq_from = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_from']
-                                                    seq_to = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_to']
-                                                    strand_string = str(
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval']['Seq-interval_strand'])
-                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                       strand_string)
-                                                    strand = result.group(1)
-
-                                            elif len(k) == 1 and 'Primary Assembly' not in \
-                                                    k[pos3]['Gene-commentary_heading']:
-
-                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                    genome_id = k[pos3]['Gene-commentary_accession']
-                                                    seq_from = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_from']
-                                                    seq_to = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_to']
-                                                    strand_string = str(
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval']['Seq-interval_strand'])
-                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                       strand_string)
-                                                    strand = result.group(1)
-                                            elif len(k) > 1 and 'Primary Assembly' in \
-                                                    k[pos3]['Gene-commentary_heading']:
-
-                                                # print ('Greater than one and in')
-                                                # if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0] and
-                                                # 'Primary Assembly' in k[pos3]['Gene-commentary_heading']:
-                                                if 'Seq-loc_int' in k[pos3]['Gene-commentary_seqs'][0]:
-                                                    genome_id = k[pos3]['Gene-commentary_accession']
-                                                    seq_from = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_from']
-                                                    seq_to = \
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval'][
-                                                            'Seq-interval_to']
-                                                    strand_string = str(
-                                                        k[pos3]['Gene-commentary_seqs'][0]['Seq-loc_int'][
-                                                            'Seq-interval']['Seq-interval_strand'])
-                                                    result = re.search('attributes={\'value\': \'(.*)\'}\)}',
-                                                                       strand_string)
-                                                    strand = result.group(1)
-
-                    # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
-                    # % (search_id, gene_id, refseq))
-                    print('searching on')
-                    print(genome_id)
-                    # print ()
-                    handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
-                                           seq_start=seq_from,
-                                           seq_stop=seq_to)
-
-                    genome_record = Entrez.read(handle, validate=False)
-
-                    for term in genome_record:
-                        # print(term)
-                        feature_table = term['GBSeq_feature-table']
-                        for pos in range(0, len(feature_table)):
-
-                            if 'GBFeature_key' in feature_table[pos].keys() and \
-                                            feature_table[pos]['GBFeature_key'] == 'CDS':
-                                feature_names = feature_table[pos]['GBFeature_quals']
-                                # print (feature_names)
-                                for pos2 in range(0, len(feature_names)):
-
-                                    print("here is the name", feature_names[pos2]['GBQualifier_value'])
-                                    if ":" in feature_names[pos2]['GBQualifier_value']:
-                                        print (feature_names[pos2]['GBQualifier_value'].split(":")[1])
-                                        print (gene_id)
-                                    # Only pull the specific record we're searching for
-                                        if feature_names[pos2]['GBQualifier_value'].split(":")[1] == gene_id:
-                                            # print('here')
-                                            # print(feature_names[pos2]['GBQualifier_name'])
-                                            # print(feature_names[pos2]['GBQualifier_value'])
-                                            print ("Here is the record id")
-                                            print (feature_names[pos2])
-
-                                            search_id = feature_names[pos2]['GBQualifier_value']
-
-                                            i = feature_table[pos]['GBFeature_location']
-
-                                            print(i)
-                                            print ('where are my exons')
-                                            if "," in i:
-                                                exons = (i.split('join(')[1].split(','))
-                                            else:
-                                                exons = [i.replace("complement(", "").replace(")", "")]
-
-                                            print ('here are the exons', exons)
-                                            strand = "minus" if "complement" in i else "plus"
-
-                                            # print ('The protein with ID %s has %d exons and thier locations are %s' %
-                                            # ( search_id, len(exons), exons))
-                                            # print ('And the lengths of the exons are %s' % (update_exon_lengths(exons)))
-                                            # print ()
-
-                                            # print (search_id)
-                                            # # print (gene_id)
-                                            # print (strand)
-
-                                            # print('exons are')
-                                            # print(exons)
-
-                                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id,
-                                                                           refseq="",
-                                                                           genome_id=genome_id,
-                                                                           genome_positions=[seq_from, seq_to],
-                                                                           exons=exons, strand=strand,
-                                                                           calc_introns=True)
-                                            # genomic_record.update_feature_lengths()
-                                            #
-                                            print('stored exons are')
-                                            print(genomic_record.exons)
-                                            # print(genomic_record.exon_lengths)
-
-                                            genomic_records[record.id] = genomic_record
-                                            # print('added')
-                                            # print(genomic_records)
-
-                                            # print('The genome ID is %s' % ( genome_id))
-                                            # print('The exons are %s and the exon lengths are %s' %
-                                            # (exons, genomic_record.exon_lengths))
-                                            #
-                                            #
+                        else:
+                            print ("Couldn't find a genome ID")
 
 
-                                            # exon_records.append(exon_dict)
-
-                                            # else:
-                                            #     print ("This is the gene id")
-                                            #     print (search_id)
-                                            #     # search_id = "KL657831.1"
-                                            #
-                                            #     handle = Entrez.efetch(db="nucleotide", id=search_id, rettype="gb",
-                                            # retmode="xml")
-                                            #     mapping = Entrez.read(handle, validate=False)
-                                            #     # print('This is the mapping')
-                                            #     # print(mapping)
-                                            #     # print(mapping[0].keys())
-                                            #     #
-                                            #     # for k, v in mapping[0].items():
-                                            #     #     print (k)
-                                            #     #     print (" ")
-                                            #     #     print (v)
-                                            #
-                                            #     coding_seq_count = 0
-                                            #
-                                            #
-                                            #
-                                            #     if "GBSeq_feature-table" in mapping[0].keys():
-                                            #         feature_table = mapping[0]["GBSeq_feature-table"]
-                                            #
-                                            #         for pos in range(0, len(feature_table)):
-                                            #             if feature_table[pos]["GBFeature_key"] == 'CDS':
-                                            #                 # print ('yep')
-                                            #                 feature_names = feature_table[pos]
-                                            #                 print ("HERES DA LOCATION")
-                                            #                 print (feature_names["GBFeature_location"])
-                                            #                 coding_seq_count +=1
-                                            #
-                                            #     if coding_seq_count > 1:
-                                            #         print ("**** WARNING **** Multiple coding sequences found")
-
-        # except Exception:
-        #     continue
-    return genomic_records
+        return genomic_records
 
 
 def get_feature_counts(records):
@@ -390,7 +318,7 @@ def save_genomic_records(records, filepath):
 
     genomic_records = map_exons(records)
 
-    print(genomic_records)
+    # print(genomic_records)
     utilities.save_python_object(genomic_records, filepath)
 
 
