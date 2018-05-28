@@ -226,8 +226,8 @@ def save_python_object(python_object, filepath):
     :param filepath: The filepath to write to
     :return:
     """
-    file_path = open(filepath, 'wb')
-    pickle.dump(python_object, file_path)
+    with open (filepath, 'wb') as pickle_file:
+        pickle.dump(python_object, pickle_file)
 
 
 def open_python_object(filepath):
@@ -236,8 +236,9 @@ def open_python_object(filepath):
     :param filepath: The filepath to open from
     :return: The object
     """
-    file = open(filepath, 'rb')
-    python_object = pickle.load(file)
+    with open(filepath, 'rb') as pickle_file:
+        python_object = pickle.load(pickle_file)
+
     return python_object
 
 def get_mean(records):

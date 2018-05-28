@@ -3,7 +3,7 @@ import utilities
 import glob
 
 working_dir = "/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/notebooks/Latest exon testing/All_Full_aligned/"
-
+# working_dir = "/Users/gabefoley/Dropbox/Code/Python Workspace/digital_notebook/testing/example"
 files = glob.glob(working_dir + "/*.fasta")
 
 with open("./output.csv", "w+") as out_file:

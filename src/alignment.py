@@ -3,14 +3,16 @@ from Bio import AlignIO
 import io
 import numpy
 
-def align_with_mafft(filepath, localpair):
+def align_with_mafft(filepath, localpair=False, maxiterate=1000):
     """
     Align a file with the given filepath using MAFFT
     :param filepath: The file to align
     :param localpair: Should we use the l-insi method
     :return: The MAFFT alignment
     """
-    mafft_cline = MafftCommandline(input=filepath, localpair=localpair)
+    mafft_cline = MafftCommandline(input=filepath, localpair=localpair, maxiterate=maxiterate)
+
+    print (mafft_cline)
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
     return align
@@ -64,6 +66,9 @@ def get_percent_identity(seq1, seq2, count_gaps=False):
     seq1 = str(seq1)
     seq2 = str(seq2)
 
+    # print (seq1)
+    # print (seq2)
+
     matches = sum(aa1 == aa2 for aa1, aa2 in zip(seq1, seq2) if aa1 != "-" and aa2 != "-")
 
     # Set the length based on whether we want identity to count gaps or not
@@ -74,7 +79,7 @@ def get_percent_identity(seq1, seq2, count_gaps=False):
         length = sum ([1 for (aa1, aa2) in zip(seq1, seq2) if aa1 != "-" and aa2 != "-"])
 
     # print ('matches ', matches)
-    # print ('lenght ', length)
+    # print ('length ', length)
 
     pct_identity = 100.0 * matches / length
 

@@ -1,4 +1,4 @@
-from GenomicRecord import GenomicRecord
+from ExonRecord import ExonRecord
 from Bio import SeqIO, Entrez
 from collections import defaultdict
 import fasta
@@ -9,262 +9,210 @@ import utilities
 from bs4 import BeautifulSoup as Soup
 from urllib.error import HTTPError
 import csv
+import numpy
 
 Entrez.email = "gabriel.foley@uqconnect.edu.au"
 
 
-def map_exons(records):
+def map_exons(records, skipped_records_path):
     """
     Take a set of protein sequences and map them back to their exon coordinates from their genomic location
     :param records: The set of protein sequences
     :return: The exon coordinates
     """
     genomic_records = {}
+    skipped_records = []
 
     for record in records:
-        # try:
-        search_id = record.id
-        protein_record = True
+        mrna = False
 
+
+        search_id = record.id
         print('Search id is ')
         print(search_id)
 
         # If it isn't an NCBI sequence, lets try and map it to the UniProt database
         if record.annotations["Database"] != "NCBI":
+            search_id = map_from_uniprot(skipped_records, search_id, record)
 
-            try:
-                handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
-                soup = Soup(handle, "lxml")
-                search_id = soup.find('property', type="protein sequence ID")["value"]
+            # If we can't map to a UniProt record, lets just check it isn't actually an NCBI ID
+            if not search_id:
+                search_id = record.id
 
-            except HTTPError as error:
-                pass
-                print ("Couldn't access a Uniprot record for " + search_id)
 
-        if protein_record:
-            # print ('Here is the NCBI id')
-            # print (search_id)
+        if check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
+            break
 
-            # Check if this is an ID that maps to the Ensembel Fungi Genome database
-            if (search_id[:4] == "FOXG"):
-                handle = urlopen("http://www.ensemblgenomes.org/id/" + search_id)
-                soup = Soup(handle, "lxml")
+        protein_record = get_protein_record(search_id)
 
-                transcript_info = soup.find('div', attrs={'class': 'lhs'}, text="About this transcript")
+        coded_by = protein_record.find("gbseq_source-db").getText().split(" ")[-1]
 
-                for sibling in transcript_info.next_siblings:
-                    if sibling != "\n":
-                        exon_num = int(sibling.text.split("This transcript has ")[1].split(" ")[0])
+        exon_location = get_exon_location_from_protein_record(protein_record, search_id)
 
-                exons = []
 
-                for i in range(0, exon_num):
-                    exons.append("id.1:1..1")
+        # Sanity check that our database source and the coded_by field on the protein record match (they should)
 
-                # print (exons)
+        exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
+        if exon_string[0:len(coded_by)] != coded_by:
+            print (exon_string[0:len(coded_by)], coded_by)
+            raise RuntimeError("The record this protein is coded by doesn't match the database source")
 
-                for count, exon in enumerate(exons):
-                    exons[count] = re.split("[.]\d:", exon)[1]
 
-                strand = "plus"
 
-                genomic_record = GenomicRecord(protein_id=search_id, gene_id="", exons=exons,
-                                               strand=strand, calc_introns=False)
+        genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
 
-                # print ("Exon count is", genomic_record.exon_count)
-                genomic_records[record.id] = genomic_record
+        if genomic_record:
+            print ("Got a genomic record")
+            mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
+            if mrna_check:
+                print ("This was an mRNA record")
+                skipped_records.append({record.id: "mRNA record"})
+                mrna = True
+
+
+        if exon_location and not mrna:
+            exon_record = build_exon_record(exon_location, search_id)
+
+            if exon_record:
+                genomic_records[record.id] = exon_record
 
             else:
-                handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
-                soup = Soup(handle, "lxml")
-                coded_by = soup.find("gbqualifier_name", text="coded_by")
+                print("Couldn't find an exon location in the genomic record")
+                skipped_records.append({record.id: "No exon location"})
 
-                for sibling in coded_by.next_siblings:
-                    if sibling != "\n":
-                        exon_text = sibling.text
-                        # print (exon_text)
+    if skipped_records_path:
+        write_skipped_records(skipped_records, skipped_records_path)
 
-                # Check that the record isn't coded by mRNA
-                if exon_text[0:2] != "XM":
+    return genomic_records
 
-                    if 'join' in exon_text:
-                        exons = (exon_text.split('join(')[1].split(','))
+def get_protein_record(search_id):
+    handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
+    protein_record = Soup(handle, "lxml")
 
-                        for count, exon in enumerate(exons):
-                            exons[count] = re.split("[.]\d:", exon)[1]
+    return protein_record
+
+def get_exon_location_from_protein_record(protein_record, search_id):
+    coded_by = protein_record.find("gbqualifier_name", text="coded_by")
+
+    for sibling in coded_by.next_siblings:
+        if sibling != "\n":
+            exon_location = sibling.text
+
+    return exon_location
 
 
+def get_exon_location_from_genomic_record(genomic_record, search_id):
+    gb_features = genomic_record.find_all('gbfeature_key', text="CDS")
 
-                    else:
-                        exons = [re.split("[.]\d:", exon_text)[1]]
+    for feature in gb_features:
+        print(feature)
+        for qualifier in feature.find_all_next('gbqualifier_value'):
+            if qualifier.getText() == search_id:
+                print("found it")
+                for location in feature.find_next('gbfeature_location'):
+                    exon_location = (location)
 
-                    strand = "minus" if "complement" in exon_text else "plus"
+    return exon_location
 
-                    genomic_record = GenomicRecord(protein_id=search_id, gene_id="", exons=exons,
-                                                   strand=strand, calc_introns=True)
+def strip_text(string_to_clean, text_list):
+    for text in text_list:
+        string_to_clean = string_to_clean.replace(text, "")
 
-                    print("Exon count is", genomic_record.exon_count)
-
-                    genomic_records[record.id] = genomic_record
-
-                # The record was coded by mRNA, so we need to try and map the Protein record to a Gene
-                else:
-
-            #     # Map the protein to a gene
-            #
-                    handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id, rettype='xml')
-                    print ('This was an mRNA record')
-
-                    try:
-                        mapping = Entrez.read(handle, validate=False)
-                    except:
-                        mapping = None
-                        gene_id = None
-
-                    # Retrieve the gene ID
-                    if mapping:
-                        for term in mapping:
-                            if term['LinkSetDb']:
-                                if term['LinkSetDb'][0]['Link'][0]['Id']:
-                                    gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
-                            else:
-                                gene_id = None
-                                break
-
-                    if gene_id is None:
-                        print("Couldn't map the NCBI protein ID to a gene automatically")
-                        print(search_id)
-                        handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
-
-                        genome_record = Entrez.read(handle, validate=False)
-                        # print (genome_record)
-
-                        for term in genome_record:
-                            feature_table = term['GBSeq_feature-table']
-                            # print (feature_table[0].keys())
-                            for pos in range(0, len(feature_table)):
-                                if 'GBFeature_key' in feature_table[pos].keys() and \
-                                                feature_table[pos]['GBFeature_key'] == 'CDS':
-                                    # print (feature_table[pos])
-                                    # i = feature_table[pos]['GBFeature_location']
-                                    feature_names = feature_table[pos]['GBFeature_quals']
-
-                                    print(feature_names)
-
-                                    for pos2 in range(0, len(feature_names)):
-                                        if feature_names[pos2]['GBQualifier_name'] == 'coded_by':
-                                            i = feature_names[pos2]['GBQualifier_value']
-
-                                    print(i)
-
-                                    if 'join' in i:
-                                        print('joint is here')
-                                        print(i)
-                                        exons = (i.split('join(')[1].split(','))
-
-                                        for count, exon in enumerate(exons):
-                                            exons[count] = re.split("[.]\d:", exon)[1]
+    return string_to_clean
 
 
 
-                                    else:
-                                        print('no join')
-                                        print(i)
-                                        exons = [re.split("[.]\d:", i)[1]]
+def map_to_genomic_record(genomic_records, skipped_records, coded_by, record):
 
 
-                                    print ('find me an exon', exons)
+    handle = Entrez.efetch(db="nuccore", id=coded_by, rettype="gb", retmode="xml")
 
-                                    strand = "minus" if "complement" in i else "plus"
-
-                                    genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id, exons=exons,
-                                                                   strand=strand, calc_introns=True)
-                                    genomic_records[record.id] = genomic_record
-
-                    if gene_id:
-                        # print('We could map the NCBI protein ID to a gene automatically')
-                        # print(gene_id)
-
-                        # Use the gene ID to get the full gene record
-                        handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
-                        # print (handle.read())
-                        # gene_record = Entrez.read(handle, validate=False)
-                        # print (gene_record)
-                        soup = Soup(handle, "lxml")
-                        # print (soup.prettify())
-                        seq_from = soup.find("seq-interval_from")
-
-                        seq_to = soup.find("seq-interval_to")
-                        genome_id_list = soup.find_all('gene-commentary_accession')
-
-                        for id in genome_id_list:
-                            id_text = id.getText()
-                            # print (id_text)
-                            if id_text[0:2] == 'NW':
-                                genome_id = id_text
+    soup = Soup(handle, "lxml")
+    return soup
 
 
-                        # print("The original protein record is %s which has a gene ID %s and a RefSeq ID %s "
-                        # % (search_id, gene_id, refseq))
-                        # print('searching on')
-                        # print(genome_id)
-                        # print ()
+def map_from_uniprot(skipped_records, search_id, record):
+    print ("Mapping from UniProt")
+    try:
+        handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
+        soup = Soup(handle, "lxml")
+        search_id = soup.find('property', type="protein sequence ID")
 
-                        if (genome_id):
-                            handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
-                                                   seq_start=seq_from,
-                                                   seq_stop=seq_to)
-                            soup = Soup(handle, "lxml")
-                            # print(soup.prettify())
-                            # print (gene_id)
-                            gb_features = soup.find_all('gbfeature_key', text="CDS")
+        if search_id:
+            search_id = search_id["value"]
+            return search_id
 
-                            for feature in gb_features:
-                                # print (feature)
-                                for qualifier in feature.find_all_next('gbqualifier_value'):
-                                    gene_check = qualifier.getText().split(":")
-                                    if gene_check[0] == "GeneID" and gene_check[1] == gene_id:
-                                        # print ('found it')
-                                        for location in feature.find_all_next('gbfeature_location'):
-                                            exon_location = (location.getText())
+        else:
+            print("Couldn't map the record to an NCBI or Ensembl Fungi Genome automatically")
+            skipped_records.append({record.id: "Couldn't map record"})
+            return False
 
-                            if 'join' in exon_location:
-                                # print('joint is here')
-                                # print (exon_location)
-                                exons = (exon_location.split('join(')[1].split(','))
+    except HTTPError as error:
+        print("Couldn't access a Uniprot record for " + search_id)
+        return False
 
-                                # print (exons)
+def check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
+    print ("Checking in alternative databases")
 
-                                # for count, exon in enumerate(exons):
-                                #     exons[count] = re.split("[.]\d:", exon)[1]
+    found = False
+
+    # Check if this is an ID that maps to the Ensembel Fungi Genome database
+    if (search_id[:4] == "FOXG"):
+        found = True
+        handle = urlopen("http://www.ensemblgenomes.org/id/" + search_id)
+        soup = Soup(handle, "lxml")
+
+        transcript_info = soup.find('div', attrs={'class': 'lhs'}, text="About this transcript")
+
+        for sibling in transcript_info.next_siblings:
+            if sibling != "\n":
+                exon_num = int(sibling.text.split("This transcript has ")[1].split(" ")[0])
+
+        # Create a dummy exon record
+        exons = generate_dummy_exons(exon_num)
+
+        strand = "plus"
+
+        exon_record = ExonRecord(protein_id=search_id, gene_id="", exons=exons,
+                                       strand=strand, calc_introns=False)
+
+        genomic_records[record.id] = exon_record
+
+    # For Steph's CYP2D sequences that had ENSEMBL Genome records
+    elif (search_id[:3] == "ENS"):
+        found = True
+        print("Couldn't find a genome ID")
+        print("SKIPPING")
+        skipped_records.append({record.id: "Couldn't map record"})
+
+    return found
 
 
 
-                            else:
-                                # print('no join')
-                                # print(exon_location)
-                                exons = [re.split("[.]\d:", exon_location)[1]]
+def build_exon_record(exon_location, search_id):
+    if 'join' in exon_location:
+        exons = (exon_location.split('join(')[1].split(','))
 
-                            # print('find me an exon', exons)
-
-                            strand = "minus" if "complement" in exon_location else "plus"
-
-                            genomic_record = GenomicRecord(protein_id=search_id, gene_id=gene_id,
-                                                           exons=exons,
-                                                           strand=strand, calc_introns=True)
-
-                            print ("Exon count is ", genomic_record.exon_count)
-                            genomic_records[record.id] = genomic_record
+        for count, exon in enumerate(exons):
+            exons[count] = re.split("[.]\d:", exon)[1]
 
 
 
+    else:
+        exons = [re.split("[.]\d:", exon_location)[1]]
 
-                        else:
-                            print ("Couldn't find a genome ID")
+    if "complement" in exon_location:
+        strand = "minus"
+        for num, exon in enumerate(exons):
+            exons[num] = re.sub(r'complement', r'', exon)
+    else:
+        strand = "plus"
 
+    exon_record = ExonRecord(protein_id=search_id,
+                                   exons=exons,
+                                   strand=strand, calc_introns=True)
 
-        return genomic_records
-
+    return exon_record
 
 def get_feature_counts(records):
     """
@@ -276,6 +224,8 @@ def get_feature_counts(records):
     """
 
     exon_counts = defaultdict(list)
+
+
 
     for protein_id, genomic_record in records.items():
         exon_counts[genomic_record.exon_count].append(protein_id)
@@ -311,15 +261,23 @@ def write_out_seqs_given_exon_count(*numbers, exon_counts, full_record, outpath)
     fasta.write_fasta(outfile, outpath)
 
 
-def save_genomic_records(records, filepath):
+def save_genomic_records(records, filepath, skipped_records_path=None):
     # If records is a dictionary convert it into a list of the records
+
     if type(records) == dict:
         records = [record for record in records.values()]
 
-    genomic_records = map_exons(records)
+    genomic_records = map_exons(records, skipped_records_path)
 
-    # print(genomic_records)
+    print ('here we are')
+    print (genomic_records)
+    print (len(genomic_records))
+    for val in genomic_records.values():
+        print (val)
+        print (val.exon_lengths)
+
     utilities.save_python_object(genomic_records, filepath)
+
 
 
 def open_genomic_records(filepath):
@@ -342,24 +300,52 @@ def get_exon_counts(records, genomic_records, filter_records=None, exclude=True)
                 exon_counts[record.id] = len(genomic_records[record.id].exons)
     return exon_counts
 
+def generate_dummy_exons(exon_num):
+    exons = []
 
-def write_exon_counts_to_csv(records, filepath, totals=True):
-    with open(filepath, 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=' ',
-                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow("Hello| Goodby")
-        # csvwriter.writerow(['Sequence ID']['Exon Count'])
-        # for records, exons in records.items():
-        #     csvwriter.writerow([records][exons])
-        # if totals:
-        #     csvwriter.writerow["-"]["Total"]
+    for i in range(0, exon_num):
+        exons.append("id.1:1..1")
+
+    for count, exon in enumerate(exons):
+        exons[count] = re.split("[.]\d:", exon)[1]
+    return exons
+
+def get_exon_array(exon_dict):
+    """
+    Convert an exon dictionary into an numpy exon array
+    :param exon_dict:
+    :return:
+    """
+
+    exon_array = numpy.array([record.exon_count for record in exon_dict.values()])
+    return exon_array
+
+
+def write_exon_counts_to_csv(records, filepath):
+    print ("writing to ", filepath)
+    with open(filepath, 'w+') as csvfile:
+        csvfile.write("Sequence ID, Exon count\n")
+        for seq_id, record in records.items():
+
+            csvfile.write("%s,%s\n" % (str(seq_id), str(record.exon_count)))
+    csvfile.close()
+
+def write_skipped_records(records, filepath):
+    with open(filepath, 'w+') as csvfile:
+        csvfile.write("Sequence ID, Reason for exclusion\n")
+
+        for record in records:
+
+            for name, reason in record.items():
+                csvfile.write("%s,%s\n" % (name, reason))
+
 
 
 def write_exon_totals_to_csv(records, filepath):
-    with open(filepath, 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=' ',
-                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow("Hello| Goodby")
+    with open(filepath, 'w+') as csvfile:
+        csvfile.write("Record ID, Number of sequences, Exon count (mean), Standard deviation of exon count\n")
+        for record_id, record in records.items():
+            csvfile.write("%s,%s,%s,%s\n" % (record_id, len(record), record.mean(), record.std()))
 
 
 def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=None, exclude=True):
@@ -379,7 +365,7 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
     # genomic_records = map_exons(records)
 
     cols = ["\033[1;35;4m", "\033[1;34;4m", "\033[1;32;4m", "\033[1;33;4m", "\033[1;37;4m", "\033[1;31;4m",
-            "\033[1;39;4m"]
+            "\033[1;39;4m", "\033[1;29;4m", "\033[1;21;4m", "\033[1;22;4m", "\033[1;23;4m", "\033[1;24;4m", "\033[1;25;4m",]
     longest_header = 0
     for record in records:
         # print (record.id)
@@ -399,9 +385,8 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
 
 
         if record.id in genomic_records:
-            # print (record.id)
             if (exclude and record.id not in filter_records) or (not exclude and record.id in filter_records):
-                print ('here')
+                # print ('here')
                 #
 
                 # print (genomic_records[record].exon_lengths)
@@ -416,11 +401,13 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                     # print (count, exon)
                     # print (count,int(math.ceil(exon/3)))
                     buildseq += str(count + 1) * int(math.ceil((exon / 3)))
-
+                # print(record.id)
                 # print (buildseq)
+                # print (str(record.seq).replace("-", ""))
                 # print (record.seq)
-                print(record.id)
 
+
+                # try:
                 ind = 0
                 for pos in record.seq:
                     if pos == "-":
@@ -436,10 +423,13 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                 seq_with_exons = str(record.seq)
                 # print (newseq)
                 # print (len(genomic_records[record].exon_lengths))
+                # print (genomic_records[record.id].exon_lengths)
                 for exon in range(0, len(genomic_records[record.id].exon_lengths)):
+                    # print (exon)
                     # print ('ind', ind)
                     # print ('exon', exon + 1)
-                    # print ('done')
+                    # print (newseq)
+
                     ind = (newseq.index(str(exon + 1)))
 
                     # print (len(seq_with_exons))
@@ -447,12 +437,16 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                     # seq_with_exons =  str(exon) + "*" + seq_with_exons[:ind + 2 * exon]
 
                 for exon in range(0, len(genomic_records[record.id].exon_lengths)):
+                    # print (seq_with_exons)
                     seq_with_exons = seq_with_exons.replace("*", cols[exon], 1)
                     # print ('hereeeee')
                     # print (seq_with_exons)
+                # except IndexError:
+                #     filter_records.append(record.id)
 
                 print(cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), seq_with_exons)
 
                 # else:
                 # print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
 
+    # print (filter_records)

@@ -5,7 +5,7 @@ import utilities
 import plotly.plotly as py
 import plotly.graph_objs as go
 from plotly.graph_objs import *
-plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
+# plotly.tools.set_credentials_file(username='gabefoley', api_key='xS8qT0kIbIKDWt0BalOd')
 
 
 def print_record_overview(records):
