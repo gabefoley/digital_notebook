@@ -11,8 +11,6 @@ def align_with_mafft(filepath, localpair=False, maxiterate=1000):
     :return: The MAFFT alignment
     """
     mafft_cline = MafftCommandline(input=filepath, localpair=localpair, maxiterate=maxiterate)
-
-    print (mafft_cline)
     stdout, stderr = mafft_cline()
     align = AlignIO.read(io.StringIO(stdout), "fasta")
     return align

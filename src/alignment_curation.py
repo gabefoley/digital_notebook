@@ -260,7 +260,7 @@ def get_seq_with_longest_deletion(candidate_deletions, final_check=True):
             if not lengths or max_len >= max(lengths, key=int):
                 lengths[max_len].append(seq)
 
-        print(lengths)
+        # print(lengths)
 
 
         if lengths:
@@ -335,7 +335,7 @@ def automated_curation(alignment_path, accepted_percent, min_length,  internal_o
 
     print("The candidate sequence is")
     print(candidate_sequence)
-    print ("Count is ", count + 1)
+    print ("Count is %s\n " % (count + 1))
     seqs = []
 
     if candidate_sequence:
