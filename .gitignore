@@ -4,6 +4,7 @@
 !results/.gitkeep 
 /notebooks/*
 !notebooks/.gitkeep
+/testing/*
 .DS_Store
 
 
