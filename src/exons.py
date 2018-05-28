@@ -25,8 +25,6 @@ def map_exons(records, skipped_records_path):
 
     for record in records:
         mrna = False
-
-
         search_id = record.id
         print('Search id is ')
         print(search_id)
@@ -57,17 +55,42 @@ def map_exons(records, skipped_records_path):
             print (exon_string[0:len(coded_by)], coded_by)
             raise RuntimeError("The record this protein is coded by doesn't match the database source")
 
-
-
         genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
 
         if genomic_record:
-            print ("Got a genomic record")
+            # print ("Got a genomic record")
             mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
             if mrna_check:
-                print ("This was an mRNA record")
-                skipped_records.append({record.id: "mRNA record"})
-                mrna = True
+                # print ("This was an mRNA record")
+                gene_id = get_gene_id(search_id)
+
+                if gene_id:
+                    # print ("Gene ID")
+
+                    gene_record = get_gene_record(gene_id)
+                    genome_id = get_genome_id(gene_record)
+
+                if genome_id:
+                    # print ("Genome ID")
+                    # print (genome_id)
+
+
+                    genome_record = get_genome_record(gene_record, genome_id)
+
+                if genome_record:
+                    # print ("Genome record")
+                    # print (genome_record.prettify())
+
+
+                    exon_location = get_exon_location_from_genomic_record(genome_record, search_id)
+
+                    # print ("Exon location")
+                    # print (exon_location)
+
+
+                else:
+                    skipped_records.append({record.id: "mRNA record"})
+                    mrna = True
 
 
         if exon_location and not mrna:
@@ -85,11 +108,75 @@ def map_exons(records, skipped_records_path):
 
     return genomic_records
 
+
 def get_protein_record(search_id):
     handle = Entrez.efetch(db="protein", id=search_id, rettype="gb", retmode="xml")
     protein_record = Soup(handle, "lxml")
-
     return protein_record
+
+
+def get_gene_record(gene_id):
+    handle = Entrez.efetch(db="gene", id=gene_id, rettype="gb", retmode="xml")
+    gene_record = Soup(handle, "lxml")
+    return gene_record
+
+def get_genome_record(gene_record, genome_id):
+
+    seq_from = gene_record.find("seq-interval_from")
+    seq_to = gene_record.find("seq-interval_to")
+
+
+    handle = Entrez.efetch(db="nuccore", id=genome_id, rettype="gb", retmode="xml",
+                           seq_start=seq_from,
+                           seq_stop=seq_to)
+    genome_record = Soup(handle, "lxml")
+    return genome_record
+
+def get_gene_id(search_id):
+
+
+    handle = Entrez.elink(dbfrom="protein", db='gene', id=search_id, rettype='xml')
+    mapping = Entrez.read(handle, validate=False)
+
+
+    # Retrieve the gene ID
+    if mapping:
+        for term in mapping:
+            if term['LinkSetDb']:
+                if term['LinkSetDb'][0]['Link'][0]['Id']:
+                    gene_id = term['LinkSetDb'][0]['Link'][0]['Id']
+            else:
+                gene_id = None
+                break
+    return gene_id
+
+
+def get_genome_id(gene_record):
+    genome_id_list = gene_record.find('gene-commentary_accession')
+    # print (genome_id_list.getText())
+    genome_id = genome_id_list.getText()
+    # print (gene_record.prettify())
+    # nc = nw = nt = None
+    # for check_id in genome_id_list:
+    #     print (check_id)
+    #     id_text = check_id.getText()
+    #     if id_text[0:2] == 'NC':
+    #         nc = id_text
+    #     elif id_text[0:2] == 'NW':
+    #         nw = id_text
+    #     elif id_text[0:2] == 'NT':
+    #         nt = id_text
+    #
+    # if nc:
+    #     genome_id = nc
+    # elif nw:
+    #     genome_id = nw
+    # elif nt:
+    #     genome_id = nt
+    #
+    # print (genome_id)
+
+    return genome_id
 
 def get_exon_location_from_protein_record(protein_record, search_id):
     coded_by = protein_record.find("gbqualifier_name", text="coded_by")
@@ -102,17 +189,33 @@ def get_exon_location_from_protein_record(protein_record, search_id):
 
 
 def get_exon_location_from_genomic_record(genomic_record, search_id):
+
+    exon_location = None
     gb_features = genomic_record.find_all('gbfeature_key', text="CDS")
 
     for feature in gb_features:
-        print(feature)
+        # print(feature)
         for qualifier in feature.find_all_next('gbqualifier_value'):
             if qualifier.getText() == search_id:
-                print("found it")
+                # print("found it")
                 for location in feature.find_next('gbfeature_location'):
                     exon_location = (location)
 
     return exon_location
+
+
+#         gb_features = soup.find_all('gbfeature_key', text="CDS")
+#
+#         for feature in gb_features:
+#             # print (feature)
+#             for qualifier in feature.find_all_next('gbqualifier_value'):
+#                 gene_check = qualifier.getText().split(":")
+#                 # print (gene_check)
+#                 if gene_check[0] == "GeneID" and gene_check[1] == gene_id:
+#                     # print ('found it')
+#                     for location in feature.find_next('gbfeature_location'):
+#                         exon_location = (location)
+#
 
 def strip_text(string_to_clean, text_list):
     for text in text_list:
@@ -192,11 +295,12 @@ def check_in_alternative_databases(genomic_records, skipped_records, search_id, 
 def build_exon_record(exon_location, search_id):
     if 'join' in exon_location:
         exons = (exon_location.split('join(')[1].split(','))
+        # print (exons)
 
+        # If the exon has the record ID preceeding it, remove it
         for count, exon in enumerate(exons):
-            exons[count] = re.split("[.]\d:", exon)[1]
-
-
+            if ":" in exon:
+                exons[count] = re.split("[.]\d:", exon)[1]
 
     else:
         exons = [re.split("[.]\d:", exon_location)[1]]
@@ -213,6 +317,8 @@ def build_exon_record(exon_location, search_id):
                                    strand=strand, calc_introns=True)
 
     return exon_record
+
+
 
 def get_feature_counts(records):
     """
@@ -268,13 +374,6 @@ def save_genomic_records(records, filepath, skipped_records_path=None):
         records = [record for record in records.values()]
 
     genomic_records = map_exons(records, skipped_records_path)
-
-    print ('here we are')
-    print (genomic_records)
-    print (len(genomic_records))
-    for val in genomic_records.values():
-        print (val)
-        print (val.exon_lengths)
 
     utilities.save_python_object(genomic_records, filepath)
 
