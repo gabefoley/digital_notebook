@@ -4,9 +4,9 @@
 
 Digital notebook is a collection of Python scripts and associated Jupyter notebooks that are meant to help with tasks such as biological sequence curation, alignment, and phylogenetic tree building.
 
-You can either call the Python scripts directly (they sit in the /src/ folder) or you can use or create new Jupyter notebooks. 
+You can either call the Python scripts directly (they sit in the src/ folder) or you can use or create new Jupyter notebooks. 
 
-There are examples of my personal notebooks in the /notebook folder and vanilla workflows to be used with your own data in the /workflows folder.
+There are examples of vanilla workflows to be used with your own data in the /workflows folder.
 
 This is a repository that contains the files so they can be used in local deployment - however the files will also soon be available to run entirely online.
 
@@ -14,7 +14,7 @@ This is a repository that contains the files so they can be used in local deploy
 
 1. Python 3
 2. Jupyter Notebook
-3. Python modules as described in requirements.txt
+3. Python modules as described in install/requirements.txt
 
 ## Installation for local deployment
 
