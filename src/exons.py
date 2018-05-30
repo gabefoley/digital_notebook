@@ -24,6 +24,7 @@ def map_exons(records, skipped_records_path):
     skipped_records = []
 
     for record in records:
+        gene_id = genome_id = genome_record = None
         mrna = False
         search_id = record.id
         print('Search id is ')
@@ -37,72 +38,63 @@ def map_exons(records, skipped_records_path):
             if not search_id:
                 search_id = record.id
 
-
-        if check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
-            break
-
-        protein_record = get_protein_record(search_id)
-
-        coded_by = protein_record.find("gbseq_source-db").getText().split(" ")[-1]
-
-        exon_location = get_exon_location_from_protein_record(protein_record, search_id)
+        try:
 
 
-        # Sanity check that our database source and the coded_by field on the protein record match (they should)
+            if check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
+                break
 
-        exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
-        if exon_string[0:len(coded_by)] != coded_by:
-            print (exon_string[0:len(coded_by)], coded_by)
-            raise RuntimeError("The record this protein is coded by doesn't match the database source")
+            protein_record = get_protein_record(search_id)
 
-        genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
+            coded_by = protein_record.find("gbseq_source-db").getText().split(" ")[-1]
 
-        if genomic_record:
-            # print ("Got a genomic record")
-            mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
-            if mrna_check:
-                # print ("This was an mRNA record")
-                gene_id = get_gene_id(search_id)
-
-                if gene_id:
-                    # print ("Gene ID")
-
-                    gene_record = get_gene_record(gene_id)
-                    genome_id = get_genome_id(gene_record)
-
-                if genome_id:
-                    # print ("Genome ID")
-                    # print (genome_id)
+            exon_location = get_exon_location_from_protein_record(protein_record, search_id)
 
 
-                    genome_record = get_genome_record(gene_record, genome_id)
+            # Sanity check that our database source and the coded_by field on the protein record match (they should)
 
-                if genome_record:
-                    # print ("Genome record")
-                    # print (genome_record.prettify())
+            exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
+            if exon_string[0:len(coded_by)] != coded_by:
+                print (exon_string[0:len(coded_by)], coded_by)
+                raise RuntimeError("The record this protein is coded by doesn't match the database source")
+
+            genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
+
+            if genomic_record:
+                # print ("Got a genomic record")
+                mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
+                if mrna_check:
+                    # print ("This was an mRNA record")
+                    gene_id = get_gene_id(search_id)
+
+                    if gene_id:
+                        # print ("Gene ID")
+
+                        gene_record = get_gene_record(gene_id)
+                        genome_id = get_genome_id(gene_record)
+
+                    if genome_id:
+                        genome_record = get_genome_record(gene_record, genome_id)
+
+                    if genome_record:
+                        exon_location = get_exon_location_from_genomic_record(genome_record, search_id, gene_id)
+
+                    else:
+                        skipped_records.append({record.id: "mRNA record"})
+                        mrna = True
 
 
-                    exon_location = get_exon_location_from_genomic_record(genome_record, search_id)
+            if exon_location and not mrna:
+                exon_record = build_exon_record(exon_location, search_id)
 
-                    # print ("Exon location")
-                    # print (exon_location)
-
+                if exon_record:
+                    genomic_records[record.id] = exon_record
 
                 else:
-                    skipped_records.append({record.id: "mRNA record"})
-                    mrna = True
-
-
-        if exon_location and not mrna:
-            exon_record = build_exon_record(exon_location, search_id)
-
-            if exon_record:
-                genomic_records[record.id] = exon_record
-
-            else:
-                print("Couldn't find an exon location in the genomic record")
-                skipped_records.append({record.id: "No exon location"})
-
+                    print("Couldn't find an exon location in the genomic record")
+                    skipped_records.append({record.id: "No exon location"})
+        except:
+            skipped_records.append({record.id: "Couldn't map record"})
     if skipped_records_path:
         write_skipped_records(skipped_records, skipped_records_path)
 
@@ -174,7 +166,7 @@ def get_genome_id(gene_record):
     # elif nt:
     #     genome_id = nt
     #
-    # print (genome_id)
+    print (genome_id)
 
     return genome_id
 
@@ -188,34 +180,31 @@ def get_exon_location_from_protein_record(protein_record, search_id):
     return exon_location
 
 
-def get_exon_location_from_genomic_record(genomic_record, search_id):
+def get_exon_location_from_genomic_record(genomic_record, search_id, gene_id):
+
 
     exon_location = None
     gb_features = genomic_record.find_all('gbfeature_key', text="CDS")
 
     for feature in gb_features:
-        # print(feature)
+        qualifier = feature.find_next('gbqualifier_value')
+        # if qualifier == search_id:
         for qualifier in feature.find_all_next('gbqualifier_value'):
             if qualifier.getText() == search_id:
-                # print("found it")
                 for location in feature.find_next('gbfeature_location'):
                     exon_location = (location)
+                    return exon_location
+
+            gene_check = qualifier.getText().split(":")
+            if gene_check[0] == "GeneID" and gene_check[1] == gene_id:
+                # print ('found it')
+                for location in feature.find_next('gbfeature_location'):
+                    exon_location = (location)
+                    return exon_location
 
     return exon_location
 
 
-#         gb_features = soup.find_all('gbfeature_key', text="CDS")
-#
-#         for feature in gb_features:
-#             # print (feature)
-#             for qualifier in feature.find_all_next('gbqualifier_value'):
-#                 gene_check = qualifier.getText().split(":")
-#                 # print (gene_check)
-#                 if gene_check[0] == "GeneID" and gene_check[1] == gene_id:
-#                     # print ('found it')
-#                     for location in feature.find_next('gbfeature_location'):
-#                         exon_location = (location)
-#
 
 def strip_text(string_to_clean, text_list):
     for text in text_list:
@@ -247,7 +236,6 @@ def map_from_uniprot(skipped_records, search_id, record):
 
         else:
             print("Couldn't map the record to an NCBI or Ensembl Fungi Genome automatically")
-            skipped_records.append({record.id: "Couldn't map record"})
             return False
 
     except HTTPError as error:
@@ -315,6 +303,8 @@ def build_exon_record(exon_location, search_id):
     exon_record = ExonRecord(protein_id=search_id,
                                    exons=exons,
                                    strand=strand, calc_introns=True)
+
+    print ("Exon count is %s" % (exon_record.exon_count))
 
     return exon_record
 
