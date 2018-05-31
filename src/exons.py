@@ -41,58 +41,58 @@ def map_exons(records, skipped_records_path):
         try:
 
 
-            if check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
-                break
-
-            protein_record = get_protein_record(search_id)
-
-            coded_by = protein_record.find("gbseq_source-db").getText().split(" ")[-1]
-
-            exon_location = get_exon_location_from_protein_record(protein_record, search_id)
+            if not check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
 
 
-            # Sanity check that our database source and the coded_by field on the protein record match (they should)
+                protein_record = get_protein_record(search_id)
 
-            exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
-            if exon_string[0:len(coded_by)] != coded_by:
-                print (exon_string[0:len(coded_by)], coded_by)
-                raise RuntimeError("The record this protein is coded by doesn't match the database source")
+                coded_by = protein_record.find("gbseq_source-db").getText().split(" ")[-1]
 
-            genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
+                exon_location = get_exon_location_from_protein_record(protein_record, search_id)
 
-            if genomic_record:
-                # print ("Got a genomic record")
-                mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
-                if mrna_check:
-                    # print ("This was an mRNA record")
-                    gene_id = get_gene_id(search_id)
 
-                    if gene_id:
-                        # print ("Gene ID")
+                # Sanity check that our database source and the coded_by field on the protein record match (they should)
 
-                        gene_record = get_gene_record(gene_id)
-                        genome_id = get_genome_id(gene_record)
+                exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
+                if exon_string[0:len(coded_by)] != coded_by:
+                    print (exon_string[0:len(coded_by)], coded_by)
+                    raise RuntimeError("The record this protein is coded by doesn't match the database source")
 
-                    if genome_id:
-                        genome_record = get_genome_record(gene_record, genome_id)
+                genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
 
-                    if genome_record:
-                        exon_location = get_exon_location_from_genomic_record(genome_record, search_id, gene_id)
+                if genomic_record:
+                    # print ("Got a genomic record")
+                    mrna_check = genomic_record.find('gbseq_moltype', text="mRNA")
+                    if mrna_check:
+                        # print ("This was an mRNA record")
+                        gene_id = get_gene_id(search_id)
+
+                        if gene_id:
+                            # print ("Gene ID")
+
+                            gene_record = get_gene_record(gene_id)
+                            genome_id = get_genome_id(gene_record)
+
+                        if genome_id:
+                            genome_record = get_genome_record(gene_record, genome_id)
+
+                        if genome_record:
+                            exon_location = get_exon_location_from_genomic_record(genome_record, search_id, gene_id)
+
+                        else:
+                            skipped_records.append({record.id: "mRNA record"})
+                            mrna = True
+
+
+                if exon_location and not mrna:
+                    exon_record = build_exon_record(exon_location, search_id)
+
+                    if exon_record:
+                        genomic_records[record.id] = exon_record
 
                     else:
-                        skipped_records.append({record.id: "mRNA record"})
-                        mrna = True
-
-
-            if exon_location and not mrna:
-                exon_record = build_exon_record(exon_location, search_id)
-
-                if exon_record:
-                    genomic_records[record.id] = exon_record
-
-                else:
-                    print("Couldn't find an exon location in the genomic record")
-                    skipped_records.append({record.id: "No exon location"})
+                        print("Couldn't find an exon location in the genomic record")
+                        skipped_records.append({record.id: "No exon location"})
         except:
             skipped_records.append({record.id: "Couldn't map record"})
     if skipped_records_path:
@@ -496,46 +496,46 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                 # print (record.seq)
 
 
-                # try:
-                ind = 0
-                for pos in record.seq:
-                    if pos == "-":
-                        newseq += "-"
-                    elif pos != "-":
-                        # print (ind)
-                        newseq += buildseq[ind]
-                        ind += 1
+                try:
+                    ind = 0
+                    for pos in record.seq:
+                        if pos == "-":
+                            newseq += "-"
+                        elif pos != "-":
+                            # print (ind)
+                            newseq += buildseq[ind]
+                            ind += 1
 
-                # print (newseq)
-
-                # print (records[record].seq)
-                seq_with_exons = str(record.seq)
-                # print (newseq)
-                # print (len(genomic_records[record].exon_lengths))
-                # print (genomic_records[record.id].exon_lengths)
-                for exon in range(0, len(genomic_records[record.id].exon_lengths)):
-                    # print (exon)
-                    # print ('ind', ind)
-                    # print ('exon', exon + 1)
                     # print (newseq)
 
-                    ind = (newseq.index(str(exon + 1)))
+                    # print (records[record].seq)
+                    seq_with_exons = str(record.seq)
+                    # print (newseq)
+                    # print (len(genomic_records[record].exon_lengths))
+                    # print (genomic_records[record.id].exon_lengths)
+                    for exon in range(0, len(genomic_records[record.id].exon_lengths)):
+                        # print (exon)
+                        # print ('ind', ind)
+                        # print ('exon', exon + 1)
+                        # print (newseq)
 
-                    # print (len(seq_with_exons))
-                    seq_with_exons = seq_with_exons[:ind + exon] + "*" + seq_with_exons[ind + exon:]
-                    # seq_with_exons =  str(exon) + "*" + seq_with_exons[:ind + 2 * exon]
+                        ind = (newseq.index(str(exon + 1)))
 
-                for exon in range(0, len(genomic_records[record.id].exon_lengths)):
-                    # print (seq_with_exons)
-                    seq_with_exons = seq_with_exons.replace("*", cols[exon], 1)
-                    # print ('hereeeee')
-                    # print (seq_with_exons)
-                # except IndexError:
-                #     filter_records.append(record.id)
+                        # print (len(seq_with_exons))
+                        seq_with_exons = seq_with_exons[:ind + exon] + "*" + seq_with_exons[ind + exon:]
+                        # seq_with_exons =  str(exon) + "*" + seq_with_exons[:ind + 2 * exon]
 
-                print(cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), seq_with_exons)
+                    for exon in range(0, len(genomic_records[record.id].exon_lengths)):
+                        # print (seq_with_exons)
+                        seq_with_exons = seq_with_exons.replace("*", cols[exon], 1)
+                        # print ('hereeeee')
+                        # print (seq_with_exons)
+                    # except IndexError:
+                    #     filter_records.append(record.id)
 
-                # else:
-                # print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
+                    print(cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), seq_with_exons)
+
+                except:
+                    print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
 
     # print (filter_records)

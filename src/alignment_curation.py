@@ -323,35 +323,62 @@ def filter_alignment_by_deletion_length(alignment_file, length, internal_only=Tr
     return sequences
 
 
-def automated_curation(alignment_path, accepted_percent, min_length,  internal_only=True, method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
+def automated_curation(alignment_path, accepted_percent, min_length, delete_all_candidates=False,  internal_only=True, method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
+    print ("trying to load")
     alignment_file = utilities.load_alignment(alignment_path, "fasta")
+    print ("couldn't load")
+
+    print ("Sequences are ", len(alignment_file))
 
     filters = filter_alignment_by_deletion_length(alignment_file, min_length, internal_only)
     indexes = get_indexes_of_deletions(alignment_file, accepted_percent, filters)
     # print (indexes)
     candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, filters, internal_only)
-    # print ("Candidate deletions are ", candidate_deletions)
-    candidate_sequence = get_seq_with_longest_deletion(candidate_deletions, final_check=final_check)
+    for deletion in candidate_deletions:
+        print ("Candidate deletions are ", deletion)
 
-    print("The candidate sequence is")
-    print(candidate_sequence)
-    print ("Count is %s\n " % (count + 1))
     seqs = []
+    if delete_all_candidates:
+        if candidate_deletions:
+            count +=1
+            for seq in alignment_file:
+                if seq.name not in candidate_deletions:
+                    seq.seq = Seq(str(seq.seq).replace("-", ""))
+                    seqs.append(seq)
+            filepath = outpath + str(count) + ".fasta"
+            alignment_filepath = filepath.replace(".fasta", ".aln")
+            fasta.write_fasta(seqs, filepath)
+            print (len(seqs))
+            if alignment_method == "MAFFT":
+                new_alignment = alignment.align_with_mafft(filepath, localpair=True)
+                alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
+                automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
+        else:
+            alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
+            print("We are finished")
 
-    if candidate_sequence:
-        count +=1
-        for seq in alignment_file:
-            if seq.name not in candidate_sequence:
-                seq.seq = Seq(str(seq.seq).replace("-", ""))
-                seqs.append(seq)
-        filepath = outpath + str(count) + ".fasta"
-        alignment_filepath = filepath.replace(".fasta", ".aln")
-        fasta.write_fasta(seqs, filepath)
-        if alignment_method == "MAFFT":
-
-            new_alignment = alignment.align_with_mafft(filepath, localpair=True)
-            alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
-        automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
     else:
-        alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
-        print ("We are finished")
+        candidate_sequence = get_seq_with_longest_deletion(candidate_deletions, final_check=final_check)
+
+        print("The candidate sequence is")
+        print(candidate_sequence)
+        print ("Count is %s\n " % (count + 1))
+        seqs = []
+
+        if candidate_sequence:
+            count +=1
+            for seq in alignment_file:
+                if seq.name not in candidate_sequence:
+                    seq.seq = Seq(str(seq.seq).replace("-", ""))
+                    seqs.append(seq)
+            filepath = outpath + str(count) + ".fasta"
+            alignment_filepath = filepath.replace(".fasta", ".aln")
+            fasta.write_fasta(seqs, filepath)
+            if alignment_method == "MAFFT":
+
+                new_alignment = alignment.align_with_mafft(filepath, localpair=True)
+                alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
+                automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
+        else:
+            alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
+            print ("We are finished")
