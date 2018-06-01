@@ -12,9 +12,7 @@ def align_with_mafft(filepath, localpair=False, maxiterate=1000):
     """
     mafft_cline = MafftCommandline(input=filepath, localpair=localpair, maxiterate=maxiterate)
     stdout, stderr = mafft_cline()
-    print ('here')
     align = AlignIO.read(io.StringIO(stdout), "fasta")
-    print ('bees')
     return align
 
 

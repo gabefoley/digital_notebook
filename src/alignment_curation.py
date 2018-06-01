@@ -106,10 +106,6 @@ def get_indexes_of_deletions(alignment_file, accepted_percent, filter=None):
 
                 # Check if it meets the minimum percent deletion for a column and if the gap is present in one of the
                 # sequences we're filtering on
-                # print ("col ", col)
-                # print ("percent_deletions ",  1 - percent_deletions)
-                # print ("accepted_percent ", accepted_percent)
-                # print (" ")
                 if 1 - percent_deletions <= accepted_percent:
                     indexes.append(idx)
     return indexes
@@ -323,17 +319,20 @@ def filter_alignment_by_deletion_length(alignment_file, length, internal_only=Tr
     return sequences
 
 
-def automated_curation(alignment_path, curation_type, accepted_percent, min_length, delete_all_candidates=False,  internal_only=True,
+def automated_curation(alignment_path,  accepted_percent, min_length, curation_type="deletion", delete_all_candidates=False,  internal_only=True,
                        method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
     curation_type = curation_type.lower()
     if curation_type != "insertion" and curation_type != "deletion":
         raise RuntimeError("Type of curation must be either insertion or deletion")
     alignment_file = utilities.load_alignment(alignment_path, "fasta")
-    print ("Sequences are ", len(alignment_file))
+    if curation_type == "deletion":
+        filters = filter_alignment_by_deletion_length(alignment_file, min_length, internal_only)
+    else:
+        filters = None
 
-    filters = filter_alignment_by_deletion_length(alignment_file, min_length, internal_only)
     indexes = get_indexes_of_deletions(alignment_file, accepted_percent, filters)
-    # print (indexes)
+
+
     candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, filters, internal_only)
     for deletion in candidate_deletions:
         print ("Candidate deletions are ", deletion)
@@ -381,7 +380,7 @@ def remove_sequences_and_realign(count, alignment_file, curation_type, to_remove
         if alignment_method == "MAFFT":
             new_alignment = alignment.align_with_mafft(filepath, localpair=True)
             alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
-            automated_curation(alignment_filepath, curation_type, accepted_percent, min_length, outpath=outpath, count=count)
+            automated_curation(alignment_filepath,  accepted_percent, min_length, curation_type=curation_type, outpath=outpath, count=count)
     else:
 
         if len(seqs) > 0:
