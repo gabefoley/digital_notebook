@@ -323,11 +323,12 @@ def filter_alignment_by_deletion_length(alignment_file, length, internal_only=Tr
     return sequences
 
 
-def automated_curation(alignment_path, accepted_percent, min_length, delete_all_candidates=False,  internal_only=True, method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
-    print ("trying to load")
+def automated_curation(alignment_path, curation_type, accepted_percent, min_length, delete_all_candidates=False,  internal_only=True,
+                       method="longest", final_check=False, alignment_method="MAFFT", outpath="", count=0):
+    curation_type = curation_type.lower()
+    if curation_type != "insertion" and curation_type != "deletion":
+        raise RuntimeError("Type of curation must be either insertion or deletion")
     alignment_file = utilities.load_alignment(alignment_path, "fasta")
-    print ("couldn't load")
-
     print ("Sequences are ", len(alignment_file))
 
     filters = filter_alignment_by_deletion_length(alignment_file, min_length, internal_only)
@@ -337,22 +338,10 @@ def automated_curation(alignment_path, accepted_percent, min_length, delete_all_
     for deletion in candidate_deletions:
         print ("Candidate deletions are ", deletion)
 
-    seqs = []
     if delete_all_candidates:
         if candidate_deletions:
-            count +=1
-            for seq in alignment_file:
-                if seq.name not in candidate_deletions:
-                    seq.seq = Seq(str(seq.seq).replace("-", ""))
-                    seqs.append(seq)
-            filepath = outpath + str(count) + ".fasta"
-            alignment_filepath = filepath.replace(".fasta", ".aln")
-            fasta.write_fasta(seqs, filepath)
-            print (len(seqs))
-            if alignment_method == "MAFFT":
-                new_alignment = alignment.align_with_mafft(filepath, localpair=True)
-                alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
-                automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
+            remove_sequences_and_realign(count, alignment_file, curation_type, candidate_deletions, outpath, alignment_method, accepted_percent, min_length )
+
         else:
             alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
             print("We are finished")
@@ -366,19 +355,37 @@ def automated_curation(alignment_path, accepted_percent, min_length, delete_all_
         seqs = []
 
         if candidate_sequence:
-            count +=1
-            for seq in alignment_file:
-                if seq.name not in candidate_sequence:
-                    seq.seq = Seq(str(seq.seq).replace("-", ""))
-                    seqs.append(seq)
-            filepath = outpath + str(count) + ".fasta"
-            alignment_filepath = filepath.replace(".fasta", ".aln")
-            fasta.write_fasta(seqs, filepath)
-            if alignment_method == "MAFFT":
-
-                new_alignment = alignment.align_with_mafft(filepath, localpair=True)
-                alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
-                automated_curation(alignment_filepath, accepted_percent, min_length, outpath=outpath, count=count)
+            remove_sequences_and_realign(count, alignment_file, curation_type, candidate_sequence, outpath, alignment_method, accepted_percent, min_length )
         else:
             alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
             print ("We are finished")
+
+def remove_sequences(alignment_file, candidate_deletions):
+    seqs = []
+    for seq in alignment_file:
+        if seq.name not in candidate_deletions:
+            seq.seq = Seq(str(seq.seq).replace("-", ""))
+            seqs.append(seq)
+    return seqs
+
+def remove_sequences_and_realign(count, alignment_file, curation_type, to_remove, outpath, alignment_method, accepted_percent, min_length):
+    count += 1
+    seqs = remove_sequences(alignment_file, to_remove)
+
+    filepath = outpath + str(count) + ".fasta"
+    alignment_filepath = filepath.replace(".fasta", ".aln")
+
+    if len(seqs) > 1:
+
+        fasta.write_fasta(seqs, filepath)
+        if alignment_method == "MAFFT":
+            new_alignment = alignment.align_with_mafft(filepath, localpair=True)
+            alignment.write_alignment(new_alignment, alignment_filepath, "fasta")
+            automated_curation(alignment_filepath, curation_type, accepted_percent, min_length, outpath=outpath, count=count)
+    else:
+
+        if len(seqs) > 0:
+            print("Only one seqeunce remains")
+            alignment.write_alignment(alignment_file, outpath + "_output.fasta", "fasta")
+        else:
+            print("No sequences remain")
