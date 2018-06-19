@@ -24,7 +24,7 @@ def map_exons(records, skipped_records_path):
     skipped_records = []
 
     for record in records:
-        gene_id = genome_id = genome_record = None
+        gene_id = genome_id = genome_record = exon_num = None
         mrna = False
         search_id = record.id
         print('Search id is ')
@@ -55,7 +55,7 @@ def map_exons(records, skipped_records_path):
 
                 exon_string = strip_text(exon_location, ["join(", "complement("]) # Remove leading info
                 if exon_string[0:len(coded_by)] != coded_by:
-                    print (exon_string[0:len(coded_by)], coded_by)
+                    # print (exon_string[0:len(coded_by)], coded_by)
                     raise RuntimeError("The record this protein is coded by doesn't match the database source")
 
                 genomic_record = map_to_genomic_record(genomic_records, skipped_records, coded_by, record)
@@ -71,6 +71,10 @@ def map_exons(records, skipped_records_path):
                             # print ("Gene ID")
 
                             gene_record = get_gene_record(gene_id)
+
+                            # print ('here')
+
+                            exon_num = get_exon_number_from_gene_record(gene_record)
                             genome_id = get_genome_id(gene_record)
 
                         if genome_id:
@@ -83,16 +87,28 @@ def map_exons(records, skipped_records_path):
                             skipped_records.append({record.id: "mRNA record"})
                             mrna = True
 
-
+                # print ('state is')
+                # print (exon_location, exon_num, mrna)
                 if exon_location and not mrna:
+                    # print ('here')
                     exon_record = build_exon_record(exon_location, search_id)
+                    # print ('exon recortd is')
+                    # print (exon_record)
 
                     if exon_record:
                         genomic_records[record.id] = exon_record
 
+                    # We could get an exon number but not the locations
+                    # elif exon_num:
+                    #     # print ('got a num')
+                    #     exon_record = get_dummy_record(search_id, exon_num)
+                    #     # print (exon_record)
+                    #     genomic_records[record.id] = exon_record
+
                     else:
                         print("Couldn't find an exon location in the genomic record")
                         skipped_records.append({record.id: "No exon location"})
+
         except:
             skipped_records.append({record.id: "Couldn't map record"})
     if skipped_records_path:
@@ -140,6 +156,7 @@ def get_gene_id(search_id):
             else:
                 gene_id = None
                 break
+    print (gene_id)
     return gene_id
 
 
@@ -166,7 +183,7 @@ def get_genome_id(gene_record):
     # elif nt:
     #     genome_id = nt
     #
-    print (genome_id)
+    # print (genome_id)
 
     return genome_id
 
@@ -179,8 +196,22 @@ def get_exon_location_from_protein_record(protein_record, search_id):
 
     return exon_location
 
+def get_exon_number_from_gene_record(gene_record):
+    # print (gene_record.prettify())
+    # print ('checking')
+    exon_num = None
+    feature = gene_record.find('gene-commentary_label', text="Exon count")
+    # print (feature)
+    num = feature.find_next('gene-commentary_text').getText()
+    if (num):
+        exon_num = num
+    print ('exon num is', exon_num)
+    return exon_num
 
 def get_exon_location_from_genomic_record(genomic_record, search_id, gene_id):
+
+    # print ('in here')
+    # print (genomic_record.prettify())
 
 
     exon_location = None
@@ -225,9 +256,11 @@ def map_to_genomic_record(genomic_records, skipped_records, coded_by, record):
 
 def map_from_uniprot(skipped_records, search_id, record):
     print ("Mapping from UniProt")
+
     try:
         handle = urlopen("https://www.uniprot.org/uniprot/" + search_id + ".xml")
         soup = Soup(handle, "lxml")
+        print ('got it')
         search_id = soup.find('property', type="protein sequence ID")
 
         if search_id:
@@ -243,7 +276,7 @@ def map_from_uniprot(skipped_records, search_id, record):
         return False
 
 def check_in_alternative_databases(genomic_records, skipped_records, search_id, record):
-    print ("Checking in alternative databases")
+    # print ("Checking in alternative databases")
 
     found = False
 
@@ -259,13 +292,9 @@ def check_in_alternative_databases(genomic_records, skipped_records, search_id, 
             if sibling != "\n":
                 exon_num = int(sibling.text.split("This transcript has ")[1].split(" ")[0])
 
-        # Create a dummy exon record
-        exons = generate_dummy_exons(exon_num)
 
-        strand = "plus"
+        exon_record = get_dummy_record(search_id, exon_num)
 
-        exon_record = ExonRecord(protein_id=search_id, gene_id="", exons=exons,
-                                       strand=strand, calc_introns=False)
 
         genomic_records[record.id] = exon_record
 
@@ -278,9 +307,22 @@ def check_in_alternative_databases(genomic_records, skipped_records, search_id, 
 
     return found
 
+def get_dummy_record(search_id, exon_num):
+    # print ('lets do')
+    exons = generate_dummy_exons(int(exon_num))
 
+    strand = "plus"
+
+    exon_record = ExonRecord(protein_id=search_id, gene_id="", exons=exons,
+                             strand=strand, calc_introns=False)
+
+    # print (exon_record)
+
+    return exon_record
 
 def build_exon_record(exon_location, search_id):
+    # print ('lets build')
+    # print (exon_location)
     if 'join' in exon_location:
         exons = (exon_location.split('join(')[1].split(','))
         # print (exons)
@@ -290,8 +332,13 @@ def build_exon_record(exon_location, search_id):
             if ":" in exon:
                 exons[count] = re.split("[.]\d:", exon)[1]
 
-    else:
+    elif ":" in exon_location:
+        # print ('lets')
         exons = [re.split("[.]\d:", exon_location)[1]]
+        # print ('do it')
+
+    else:
+        return None
 
     if "complement" in exon_location:
         strand = "minus"
@@ -300,9 +347,15 @@ def build_exon_record(exon_location, search_id):
     else:
         strand = "plus"
 
-    exon_record = ExonRecord(protein_id=search_id,
-                                   exons=exons,
-                                   strand=strand, calc_introns=True)
+    # print (exons)
+
+    if exons:
+
+        exon_record = ExonRecord(protein_id=search_id,
+                                       exons=exons,
+                                       strand=strand, calc_introns=True)
+    else:
+        return None
 
     print ("Exon count is %s" % (exon_record.exon_count))
 
@@ -495,7 +548,6 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                 # print (str(record.seq).replace("-", ""))
                 # print (record.seq)
 
-
                 try:
                     ind = 0
                     for pos in record.seq:
@@ -505,6 +557,11 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                             # print (ind)
                             newseq += buildseq[ind]
                             ind += 1
+
+                #     print(record.id)
+                #     filter_records.append(record.id)
+                #     print(filter_records)
+
 
                     # print (newseq)
 
@@ -530,12 +587,14 @@ def map_exon_boundaries_to_alignment(records, genomic_records, filter_records=No
                         seq_with_exons = seq_with_exons.replace("*", cols[exon], 1)
                         # print ('hereeeee')
                         # print (seq_with_exons)
-                    # except IndexError:
-                    #     filter_records.append(record.id)
+                    print(cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header),
+                              seq_with_exons)
 
-                    print(cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), seq_with_exons)
+                except IndexError:
+                    pass
 
-                except:
-                    print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
 
-    # print (filter_records)
+                # except:
+                #     print (cols[-1] + '{message: <{fill}}'.format(message=record.id, fill=longest_header), record.seq)
+
+    print (filter_records)

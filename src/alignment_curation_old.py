@@ -2,11 +2,10 @@ import utilities
 import fasta
 import alignment
 from Bio.Seq import Seq
-import re
 from collections import defaultdict
 
 
-def get_seqs_at_index(alignment_file, col_index, curation_type, filter=None, return_gaps=True):
+def get_seqs_at_index(alignment_file, col_index, filter=None, return_gaps=True):
     """
     Given a column index get the sequences at that column that display a particular presence or absence of a gap
     :param alignment_file: The lignment_file to check
@@ -26,8 +25,7 @@ def get_seqs_at_index(alignment_file, col_index, curation_type, filter=None, ret
     for align_index in check_seqs:
 
         # If this column isn't a gap add it to insertion_columns list
-        if (curation_type == "deletion" and alignment_file[align_index].seq[col_index] == "-") or \
-                (curation_type == "insertion" and alignment_file[align_index].seq[col_index] != "-"):
+        if alignment_file[align_index].seq[col_index] == "-":  # Add in all the sequences with gaps
             seqs.append(align_index)
         else:
             if align_index in seqs:
@@ -87,7 +85,7 @@ def get_insertion_candidates(alignment_file, min_length=0, ignore_edges=True, ra
     """
 
 
-def get_indexes(alignment_file, accepted_percent, curation_type, filter=None):
+def get_indexes_of_deletions(alignment_file, accepted_percent, filter=None):
     indexes = []
     for idx in range(len(alignment_file[0])):
         col = alignment_file[:, idx]
@@ -102,21 +100,18 @@ def get_indexes(alignment_file, accepted_percent, curation_type, filter=None):
 
         if not filter or passed_filter:
 
-
-            col_count = len(re.findall("-", col)) if curation_type == "deletion" else len(re.findall(r'\w', col))
-
-            # print (col_count)
-            if col_count > 0:
-                percent_cols = (len(col) - col_count) / (len(col) - 1)
+            col_deletions = (col.count("-"))
+            if col_deletions > 0:
+                percent_deletions = (len(col) - col_deletions) / (len(col) - 1)
 
                 # Check if it meets the minimum percent deletion for a column and if the gap is present in one of the
                 # sequences we're filtering on
-                if 1 - percent_cols <= accepted_percent:
+                if 1 - percent_deletions <= accepted_percent:
                     indexes.append(idx)
     return indexes
 
 
-def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, filter=None, internal_only=True):
+def get_candidate_deletions(alignment_file, indexes, min_length, filter=None, internal_only=True):
     # print (indexes)
     candidates = {}
     positions = {}
@@ -124,11 +119,12 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
         if i + min_length <= len(indexes):
             window = indexes[i:i + min_length]
             idx = 0
-            print('idx is now ', idx)
+            # print('idx is now ', idx)
+            # print(len(window))
 
             # If the user just wants a window size of one
             if len(window) == 1:
-                insertion_cols = get_seqs_at_index(alignment_file, window[0], curation_type, filter)
+                insertion_cols = get_seqs_at_index(alignment_file, window[0], filter)
                 intersection = [val for val in insertion_cols]
 
             else:
@@ -142,7 +138,7 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
                     else:
 
                         # Get the list of alignments that have
-                        insertion_cols = get_seqs_at_index(alignment_file, window[idx], curation_type, filter)
+                        insertion_cols = get_seqs_at_index(alignment_file, window[idx], filter)
                         # print ('idx is ', window[idx])
                         # print ("insertion cols", insertion_cols)
 
@@ -161,7 +157,6 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
             # idx = 0
             # If we made it through the sliding window then it is a candidate insertion
             if idx == len(window):
-                print ('made it')
                 for seq in intersection:
                     internal = True
                     candidate_index = 0
@@ -192,8 +187,7 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
                                     internal = False
                                     break
 
-                            if (curation_type=="deletion" and alignment_file[seq][first_index - 1] == "-") or \
-                                    (curation_type == "insertion" and alignment_file[seq][first_index - 1] != "-"):
+                            if alignment_file[seq][first_index - 1] == "-":
                                 candidates[alignment_file[seq].name][candidate_index].insert(0, first_index - 1)
                                 positions[alignment_file[seq].name].append(first_index - 1)
                                 first_index -= 1
@@ -212,8 +206,7 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
                         while last_index + 1 < len(alignment_file[0]):
 
                             # print ("alignment_file here is ", alignment_file[seq][last_index + 1])
-                            if (curation_type == "deletion" and alignment_file[seq][last_index + 1] == "-") or \
-                                    (curation_type == "insertion" and alignment_file[seq][last_index + 1] != "-") :
+                            if alignment_file[seq][last_index + 1] == "-":
                                 candidates[alignment_file[seq].name][candidate_index].append(last_index + 1)
                                 positions[alignment_file[seq].name].append(last_index + 1)
                                 # print ('candidates is ', candidates)
@@ -337,10 +330,10 @@ def automated_curation(alignment_path,  accepted_percent, min_length, curation_t
     else:
         filters = None
 
-    indexes = get_indexes(alignment_file, accepted_percent, curation_type, filters)
+    indexes = get_indexes_of_deletions(alignment_file, accepted_percent, filters)
 
 
-    candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, curation_type, filters, internal_only)
+    candidate_deletions = get_candidate_deletions(alignment_file, indexes, min_length, filters, internal_only)
     for deletion in candidate_deletions:
         print ("Candidate deletions are ", deletion)
 
