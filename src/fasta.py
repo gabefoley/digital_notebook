@@ -224,7 +224,7 @@ def build_species_count(*header_terms, records, length=0, mode="exclude"):
 def count_ids(records, min_length=0):
     count = 0
     for record in records.values():
-        if len(record) > min_length:
+        if len(record) >= min_length:
             count += len(record)
     return count
 
