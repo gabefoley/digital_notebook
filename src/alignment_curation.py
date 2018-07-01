@@ -124,7 +124,7 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
         if i + min_length <= len(indexes):
             window = indexes[i:i + min_length]
             idx = 0
-            print('idx is now ', idx)
+            # print('idx is now ', idx)
 
             # If the user just wants a window size of one
             if len(window) == 1:
@@ -161,7 +161,7 @@ def get_candidate_deletions(alignment_file, indexes, min_length, curation_type, 
             # idx = 0
             # If we made it through the sliding window then it is a candidate insertion
             if idx == len(window):
-                print ('made it')
+                # print ('made it')
                 for seq in intersection:
                     internal = True
                     candidate_index = 0
