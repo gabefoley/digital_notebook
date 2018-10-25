@@ -1,4 +1,5 @@
 from Bio import SeqIO
+from Bio.Seq import Seq
 from collections import defaultdict
 import plotly
 import utilities
@@ -295,7 +296,14 @@ def map_list_to_records(records, full_dict, unique=False):
     return out_records
 
 
-def write_fasta(records, filename):
+def write_fasta(records, filename, full_details=None):
+
+    if full_details:
+        for seq in records:
+            seq.id = seq.name
+
+
+
     with open(filename, "w") as handle:
             SeqIO.write(records, handle, "fasta")
 
@@ -345,58 +353,38 @@ def subset_on_motif(records, motif, retain_motif_seqs = True):
     return subset_motifs
 
 
-def correct_phylip_tree(phylip_file_path, phylip_dict_path, outpath):
-    """
-    Using a dictionary mapping full id to PHYLIP id, change a PHYLIP annotated tree back to the full ID
-    :param records: The alignment we will retrieve the original IDs from
-    :param phylip_file: The tree with the truncated PHYLIP ids
-    :return:
-    """
-    # records = utilities.load_sequences(records_path)
-    phylip_tree = utilities.load_tree(phylip_file_path)
-    phylip_correction_dict = utilities.open_python_object(phylip_dict_path)
+def correct_fastml_nodes(in_path, out_path):
+    fastml_ancestors = utilities.load_sequences(in_path)
 
+    for x in fastml_ancestors:
+        if len(x) < 5 and x.startswith("N"):
+            oldname = fastml_ancestors[x].name
+            node = oldname.split("N")[1]
+            newname = "N" + str(int(node) - 1)
+            fastml_ancestors[x].id = newname
+            fastml_ancestors[x].name = newname
+            fastml_ancestors[x].description = newname
 
-    for node in phylip_tree:
-        if node.name in phylip_correction_dict:
-            node.name = phylip_correction_dict[node.name]
+    records = [x for x in fastml_ancestors.values()]
 
-    phylip_tree.write(outfile=outpath)
+    write_fasta(records=records, filename=out_path)
 
+def add_gaps_to_fastml_joint(joint_path, marginal_path, out_path):
 
-def generate_phylip_correction_dictionary(records, outpath=""):
-    """
-    Create a dictionary to map full id to a generated PHYLIP id, for cases when PHYLIP ids would be non-unique
-    :return:
-    """
+    joint = utilities.load_sequences(joint_path)
+    marginal = utilities.load_sequences(marginal_path)
 
-    phylip_correction_dict = {}
-    for record in records.values():
-        if record.name[0:10] in phylip_correction_dict:
-            phylip_correction_dict[utilities.random_string(10)] = record.name
+    for x in marginal:
+        if len(x) < 5 and x.startswith("N"):
+            updated_joint = ""
 
-        else:
-            phylip_correction_dict[record.name[0:10]] = record.name
+            for pos in zip(marginal[x].seq, joint[x].seq):
+                if pos[0] == "-":
+                    updated_joint += "-"
+                else:
+                    updated_joint += pos[1]
 
-    if outpath:
-        utilities.save_python_object(phylip_correction_dict, outpath)
+            joint[x].seq = Seq(updated_joint)
 
-    return phylip_correction_dict
-
-
-def translate_to_phylip(records, phylip_dict):
-    translated_records = {}
-    for short, full in phylip_dict.items():
-        translated_records[short] = records[full]
-        translated_records[short].id = short
-        translated_records[short].name = short
-        translated_records[short].description = ""
-    return translated_records
-
-
-def write_out_phylip(records, outpath, outformat="fasta", dict_outpath = ""):
-    phylip_correction_dict = generate_phylip_correction_dictionary(records, dict_outpath)
-    translated_records = translate_to_phylip(records, phylip_correction_dict)
-    out_records = map_dict_to_records(translated_records)
-    SeqIO.write(out_records, outpath, outformat)
-
+    records = [x for x in joint.values()]
+    write_fasta(records=records, filename=out_path)

@@ -29,6 +29,9 @@ def get_id_to_taxonomy_dict(tree, seq_type="protein", split_char=" "):
     taxonomy_dict = utilities.build_taxonomy_dict(seq_ids, seq_type)
     return taxonomy_dict
 
+def get_species_name_to_taxonomy_dict(tree, seq_type="protein", split_char=" "):
+    pass
+
 
 def create_taxon_tree_from_id(tree, taxonomy_dict, split_char=" "):
     """
